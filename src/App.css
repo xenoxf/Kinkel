@@ -350,7 +350,6 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-inline: calc(var(--gutter) * -1);
   padding: clamp(10px, 2vh, 20px) 0 clamp(14px, 2.6vh, 24px);
 }
 
@@ -362,8 +361,35 @@ body {
 }
 
 .keyboard-wrap {
-  width: min(100%, 1500px);
-  padding: clamp(7px, 1vh, 12px);
+  /* El ancho se deriva de la altura de tecla para conservar la proporción
+     real del teclado: 1u ≈ 1,25 × alto. Nunca se estira para llenar la
+     pantalla; en pantallas anchas quedan márgenes laterales. */
+  --deck-margin: clamp(10px, 1.6vw, 32px);
+  --deck-pad: clamp(7px, 1vh, 12px);
+  --key-gap: clamp(3px, 0.45vh, 5px);
+  --key-h-max: 8vh;
+  --key-h: clamp(
+    18px,
+    min(
+      var(--key-h-max),
+      calc(
+        (
+            100vw - 2 * var(--gutter, 0px) - 2 * var(--deck-margin) -
+              2 * var(--deck-pad) - 4px - 14 * var(--key-gap)
+          ) / 18.75
+      )
+    ),
+    76px
+  );
+  --key-font: clamp(11px, calc(var(--key-h) * 0.38), 24px);
+  width: min(
+    calc(100% - var(--deck-margin) * 2),
+    calc(
+      var(--key-h) * 18.75 + 14 * var(--key-gap) + var(--deck-pad) * 2 + 4px
+    )
+  );
+  margin-inline: auto;
+  padding: var(--deck-pad);
   border-radius: clamp(14px, 1.8vh, 20px);
   border: 2px solid rgba(255, 255, 255, 0.9);
   background: linear-gradient(
@@ -379,8 +405,6 @@ body {
 }
 
 .keyboard {
-  --key-h: clamp(46px, 7.4vh, 64px);
-  --key-gap: clamp(3px, 0.45vh, 5px);
   display: grid;
   grid-template-columns: repeat(60, 1fr);
   grid-template-rows: repeat(5, var(--key-h));
@@ -451,47 +475,47 @@ body {
 }
 
 .key-label {
-  font-size: clamp(16px, 2.2vh, 23px);
+  font-size: var(--key-font);
   font-weight: 600;
   line-height: 1;
   padding-bottom: 2px;
 }
 
 .key--util .key-label {
-  font-size: clamp(11px, 1.6vh, 14px);
+  font-size: clamp(9px, calc(var(--key-font) * 0.68), 16px);
   color: #475569;
   letter-spacing: 0.01em;
 }
 
 .key--space .key-label {
-  font-size: clamp(11px, 1.4vh, 13px);
+  font-size: clamp(8px, calc(var(--key-font) * 0.58), 13px);
   color: #64748b;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .key--enter .key-label {
-  font-size: clamp(14px, 1.9vh, 18px);
+  font-size: clamp(11px, calc(var(--key-font) * 0.82), 19px);
   font-weight: 700;
 }
 
 .key--backspace .key-label {
-  font-size: clamp(13px, 1.8vh, 17px);
+  font-size: clamp(10px, calc(var(--key-font) * 0.78), 18px);
 }
 
 .key--shift .key-label {
-  font-size: clamp(16px, 2.2vh, 22px);
+  font-size: clamp(12px, calc(var(--key-font) * 1.05), 25px);
 }
 
 .key--caps .key-label {
-  font-size: clamp(11px, 1.6vh, 14px);
+  font-size: clamp(9px, calc(var(--key-font) * 0.62), 14px);
 }
 
 .key-sub {
   position: absolute;
   top: 5px;
   right: 7px;
-  font-size: clamp(9px, 1.15vh, 11px);
+  font-size: clamp(8px, calc(var(--key-font) * 0.46), 12px);
   font-weight: 700;
   color: #64748b;
   opacity: 0.8;
@@ -744,6 +768,65 @@ body {
   }
 }
 
+@media (max-width: 860px) {
+  .app {
+    --gutter: 8px;
+  }
+
+  .brand-icon {
+    width: 38px;
+    height: 38px;
+  }
+
+  .brand-name {
+    font-size: 24px;
+  }
+
+  .icon-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+  }
+
+  .keyboard-wrap {
+    --deck-margin: 10px;
+  }
+}
+
+@media (max-width: 620px) {
+  .topbar {
+    gap: 8px;
+  }
+
+  .brand-icon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .brand-name {
+    font-size: 21px;
+  }
+
+  .icon-btn {
+    width: 36px;
+    height: 36px;
+  }
+
+  .stage-holder {
+    top: 52px;
+    height: 118px;
+  }
+
+  .keyboard-wrap {
+    --deck-margin: 8px;
+    --deck-pad: 6px;
+  }
+
+  .key-sub {
+    display: none;
+  }
+}
+
 @media (max-height: 760px) {
   .app {
     padding-top: 10px;
@@ -793,13 +876,10 @@ body {
     font-size: 16px;
   }
 
-  .keyboard {
-    --key-h: clamp(44px, 7.2vh, 56px);
-    --key-gap: 3px;
-  }
-
   .keyboard-wrap {
-    padding: 8px;
+    --key-h-max: 7.6vh;
+    --key-gap: 3px;
+    --deck-pad: 8px;
     border-radius: 14px;
   }
 
@@ -833,13 +913,10 @@ body {
     font-size: 15px;
   }
 
-  .keyboard {
-    --key-h: clamp(36px, 7.2vh, 48px);
-    --key-gap: 2px;
-  }
-
   .keyboard-wrap {
-    padding: 6px;
+    --key-h-max: 7.2vh;
+    --key-gap: 2px;
+    --deck-pad: 6px;
     border-radius: 12px;
   }
 
