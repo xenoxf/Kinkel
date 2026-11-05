@@ -382,7 +382,7 @@ body {
   --key-h: clamp(46px, 7.4vh, 64px);
   --key-gap: clamp(3px, 0.45vh, 5px);
   display: grid;
-  grid-template-columns: repeat(74, 1fr);
+  grid-template-columns: repeat(60, 1fr);
   grid-template-rows: repeat(5, var(--key-h));
   gap: var(--key-gap);
 }
@@ -455,11 +455,6 @@ body {
   font-weight: 600;
   line-height: 1;
   padding-bottom: 2px;
-}
-
-.key--digit .key-label {
-  font-size: clamp(18px, 2.5vh, 26px);
-  font-weight: 800;
 }
 
 .key--util .key-label {

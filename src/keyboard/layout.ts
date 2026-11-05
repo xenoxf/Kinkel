@@ -12,7 +12,7 @@
  * `´` y `¨` son teclas muertas: se combinan con la vocal siguiente.
  *
  * Cada tecla tiene coordenadas en unidades (1u = una letra) para poder
- * dibujar el bloque principal + el pad numérico a la derecha.
+ * dibujar el bloque principal del teclado LATAM.
  */
 export type Finger =
   | "pinky-l"
@@ -28,7 +28,6 @@ export type Finger =
 
 export type KeyKind =
   | "letter"
-  | "digit"
   | "punct"
   | "dead"
   | "space"
@@ -57,8 +56,8 @@ export interface KeyDef {
 
 export const HOME_KEYS = new Set(["KeyF", "KeyJ"]);
 
-/** Ancho total del dibujo: bloque principal (15u) + hueco + pad numérico (3u). */
-export const KEYBOARD_UNITS = 18.5;
+/** Ancho total del dibujo: bloque principal de 15u. */
+export const KEYBOARD_UNITS = 15;
 export const KEYBOARD_COLS = Math.round(KEYBOARD_UNITS * 4);
 
 export const ACCENTS: Record<string, { compose: Record<string, string> }> = {
@@ -105,25 +104,6 @@ function special(
   width: number,
 ): BaseKey {
   return { code, label, kind, finger, width };
-}
-
-function digit(
-  code: string,
-  label: string,
-  row: number,
-  col: number,
-  finger: Finger,
-  width = 1,
-): KeyDef {
-  return {
-    code,
-    label,
-    kind: "digit",
-    finger,
-    width,
-    row,
-    col,
-  };
 }
 
 function withColumns(keys: BaseKey[], row: number): KeyDef[] {
@@ -213,29 +193,14 @@ const ROW_SPACE: BaseKey[] = [
 ];
 
 /**
- * Pad numérico compacto (3×4) en la zona superior derecha, alineado con las
- * filas de números, QWERTY, home y shift. El 0 ocupa las tres columnas.
+ * Bloque principal del teclado LATAM (55 teclas).
  */
-const NUMPAD_KEYS: KeyDef[] = [
-  digit("Numpad7", "7", 0, 15.5, "index-r"),
-  digit("Numpad8", "8", 0, 16.5, "middle-r"),
-  digit("Numpad9", "9", 0, 17.5, "ring-r"),
-  digit("Numpad4", "4", 1, 15.5, "index-r"),
-  digit("Numpad5", "5", 1, 16.5, "middle-r"),
-  digit("Numpad6", "6", 1, 17.5, "ring-r"),
-  digit("Numpad1", "1", 2, 15.5, "index-r"),
-  digit("Numpad2", "2", 2, 16.5, "middle-r"),
-  digit("Numpad3", "3", 2, 17.5, "ring-r"),
-  digit("Numpad0", "0", 3, 15.5, "thumb", 3),
-];
-
 export const KEYBOARD_KEYS: KeyDef[] = [
   ...withColumns(ROW_NUMBERS, 0),
   ...withColumns(ROW_QWERTY, 1),
   ...withColumns(ROW_HOME, 2),
   ...withColumns(ROW_SHIFT, 3),
   ...withColumns(ROW_SPACE, 4),
-  ...NUMPAD_KEYS,
 ];
 
 export const KEY_BY_CODE: Record<string, KeyDef> = Object.fromEntries(
@@ -251,8 +216,6 @@ export function resolveChar(
   switch (def.kind) {
     case "letter":
       return shift !== caps ? def.label.toUpperCase() : def.label;
-    case "digit":
-      return def.label;
     case "punct":
       return shift ? (def.shiftLabel ?? def.label) : def.label;
     case "space":

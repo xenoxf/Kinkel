@@ -7,7 +7,7 @@ queda como una **mini tecla**. No es una app de práctica de escritura: lo
 importante es ver, tocar y jugar con el teclado.
 
 Contenido en **español (Latinoamérica)**, teclado **LATAM** con Ñ, acentos,
-teclas muertas y **pad numérico compacto**.
+teclas muertas y su fila superior de números.
 
 ![Kinkel](docs/kinkel-mvp.png)
 
@@ -22,12 +22,11 @@ teclas muertas y **pad numérico compacto**.
 
 ## Qué incluye
 
-- Teclado **LATAM** en pantalla de **65 teclas**: bloque principal de 55 +
-  **pad numérico de 10** en la zona superior derecha, con la distribución real
-  (Ñ, ¡¿, `´` y `¨` como teclas muertas).
+- Teclado **LATAM** en pantalla de **55 teclas**, con la distribución real
+  (Ñ, ¡¿, `´` y `¨` como teclas muertas) y su **fila superior de números 1–0**.
 - **Paleta viva por dedo** (mecanografía), teclas más grandes y radios más
   compactos, con marcas de posición guía en **F** y **J**.
-- El teclado está **centrado y es el protagonista**, ocupa casi todo el ancho;
+- El teclado está **centrado y es el protagonista**, ocupa todo el ancho;
   la pizarra queda compacta arriba y en segundo plano.
 - Al pulsar, la tecla se **hunde y brilla** con un halo de luz.
 - La **tecla completa vuela** (fondo, padding, etiqueta y color de dedo) en
@@ -39,8 +38,8 @@ teclas muertas y **pad numérico compacto**.
   pizarra.
 - **Shift** y **Bloq Mayús** cambian mayúsculas; los símbolos con Shift se
   muestran en la tecla. **Enter** abre una línea nueva y **Backspace** borra.
-- **Pad numérico**: `7 8 9 / 4 5 6 / 1 2 3 / 0` con el 0 a todo lo ancho.
-  Escribe dígitos (también con Shift) y cada tecla vuela con su color de dedo.
+- **Números en la fila superior**: `1–0` escriben dígitos y sus símbolos con
+  Shift, igual que en un teclado LATAM real.
 - Sonidos sintetizados (Web Audio API), botón de silencio y borrado total con
   confirmación.
 - La pizarra se guarda sola (localStorage) con el origen de cada tecla y se
@@ -71,7 +70,7 @@ pnpm tauri build  # genera los paquetes de la app
 
 ```
 src/
-  keyboard/layout.ts      # teclado LATAM: teclas, coordenadas, dedos, pad numérico y acentos
+  keyboard/layout.ts      # teclado LATAM: teclas, coordenadas, dedos y acentos
   game/board.ts           # celdas de la pizarra (carácter + tecla de origen)
   game/metrics.ts         # métricas de la pizarra (celda y alto de línea)
   audio/sounds.ts         # sonidos sintetizados con Web Audio API (sin assets)
@@ -91,7 +90,7 @@ src-tauri/                # shell desktop (Tauri 2)
   (tag `vX.Y.Z` + título + descripción), usando `gh`:
 
 ```bash
-git tag -a v0.3.0 -m "Kinkel v0.3.0"
-git push origin v0.3.0
-gh release create v0.3.0 --title "Kinkel v0.3.0" --notes "…"
+git tag -a v0.3.1 -m "Kinkel v0.3.1"
+git push origin v0.3.1
+gh release create v0.3.1 --title "Kinkel v0.3.1" --notes "…"
 ```

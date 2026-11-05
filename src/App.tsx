@@ -415,7 +415,6 @@ export default function App() {
       }
       case "letter":
       case "punct":
-      case "digit":
         handleCharKey(def, event);
         return;
     }
