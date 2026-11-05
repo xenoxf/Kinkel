@@ -34,7 +34,7 @@ body {
 /* ---------- Escenario / layout ---------- */
 
 .app {
-  --gutter: clamp(16px, 2.6vw, 36px);
+  --gutter: clamp(8px, 1vw, 16px);
   position: relative;
   height: 100%;
   display: flex;
@@ -150,7 +150,7 @@ body {
   left: 50%;
   transform: translateX(-50%);
   width: min(calc(100% - var(--gutter) * 2), 980px);
-  height: clamp(158px, 21vh, 188px);
+  height: clamp(150px, 19vh, 176px);
   display: flex;
   z-index: 3;
 }
@@ -162,7 +162,7 @@ body {
   min-height: 0;
   background: linear-gradient(180deg, #fffef9 0%, #fffdf2 100%);
   border: 3px solid rgba(255, 255, 255, 0.9);
-  border-radius: 22px;
+  border-radius: 15px;
   box-shadow:
     0 20px 38px -28px rgba(7, 89, 133, 0.55),
     inset 0 1px 0 #ffffff;
@@ -189,7 +189,7 @@ body {
   right: 0;
   bottom: 0;
   height: 24px;
-  border-radius: 0 0 22px 22px;
+  border-radius: 0 0 15px 15px;
   background: linear-gradient(180deg, rgba(255, 253, 242, 0), rgba(255, 253, 242, 0.95));
   pointer-events: none;
 }
@@ -273,11 +273,11 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
+  border-radius: 6px;
   background: linear-gradient(
     180deg,
     #ffffff 0%,
-    var(--key-bg, #eef2f7) 32%,
+    var(--key-bg, #eef2f7) 26%,
     var(--key-bg, #eef2f7) 100%
   );
   border: 1px solid rgba(15, 23, 42, 0.1);
@@ -350,7 +350,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: clamp(10px, 2vh, 20px) 0 clamp(16px, 3vh, 28px);
+  margin-inline: calc(var(--gutter) * -1);
+  padding: clamp(10px, 2vh, 20px) 0 clamp(14px, 2.6vh, 24px);
 }
 
 .keyboard-stack {
@@ -361,9 +362,9 @@ body {
 }
 
 .keyboard-wrap {
-  width: min(100%, 1240px);
-  padding: clamp(10px, 1.6vh, 16px);
-  border-radius: clamp(20px, 2.4vh, 28px);
+  width: min(100%, 1500px);
+  padding: clamp(7px, 1vh, 12px);
+  border-radius: clamp(14px, 1.8vh, 20px);
   border: 2px solid rgba(255, 255, 255, 0.9);
   background: linear-gradient(
     180deg,
@@ -378,8 +379,8 @@ body {
 }
 
 .keyboard {
-  --key-h: clamp(40px, 6.2vh, 56px);
-  --key-gap: clamp(4px, 0.6vh, 6px);
+  --key-h: clamp(46px, 7.4vh, 64px);
+  --key-gap: clamp(3px, 0.45vh, 5px);
   display: grid;
   grid-template-columns: repeat(74, 1fr);
   grid-template-rows: repeat(5, var(--key-h));
@@ -393,11 +394,11 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: clamp(9px, 1.1vh, 13px);
+  border-radius: clamp(6px, 0.85vh, 9px);
   background: linear-gradient(
     180deg,
     #ffffff 0%,
-    var(--key-bg) 30%,
+    var(--key-bg) 18%,
     var(--key-bg) 100%
   );
   border: 1px solid rgba(15, 23, 42, 0.09);
@@ -405,61 +406,60 @@ body {
     0 4px 0 var(--key-edge),
     0 7px 12px -8px rgba(15, 23, 42, 0.45),
     inset 0 1px 0 rgba(255, 255, 255, 0.9);
-  color: #1e3a4c;
+  color: #14293a;
   transition: transform 55ms ease, box-shadow 55ms ease, filter 120ms ease;
   will-change: transform;
 }
 
 /* Colores por dedo (mecanografía) */
 .key--pinky-l {
-  --key-bg: #ffd9df;
-  --key-edge: #f9a8b8;
+  --key-bg: #ffa1b8;
+  --key-edge: #f43f5e;
 }
 .key--ring-l {
-  --key-bg: #ffe6c7;
-  --key-edge: #fdba74;
+  --key-bg: #ffb877;
+  --key-edge: #f97316;
 }
 .key--middle-l {
-  --key-bg: #fff3c4;
-  --key-edge: #fde047;
+  --key-bg: #ffe45c;
+  --key-edge: #eab308;
 }
 .key--index-l {
-  --key-bg: #d9f7dd;
-  --key-edge: #86efac;
+  --key-bg: #86f0a8;
+  --key-edge: #22c55e;
 }
 .key--index-r {
-  --key-bg: #ccfbf1;
-  --key-edge: #5eead4;
+  --key-bg: #5fe8d2;
+  --key-edge: #0d9488;
 }
 .key--middle-r {
-  --key-bg: #dbeafe;
-  --key-edge: #93c5fd;
+  --key-bg: #85c8ff;
+  --key-edge: #3b82f6;
 }
 .key--ring-r {
-  --key-bg: #e9e3ff;
-  --key-edge: #c4b5fd;
+  --key-bg: #bda4ff;
+  --key-edge: #8b5cf6;
 }
 .key--pinky-r {
-  --key-bg: #fce7f3;
-  --key-edge: #f9a8d4;
+  --key-bg: #ffa3d4;
+  --key-edge: #ec4899;
 }
 .key--thumb,
 .key--mod {
-  --key-bg: #eef2f7;
-  --key-edge: #cbd5e1;
-}
-
-/* Cluster de flechas: mismo lenguaje, un tono más presente */
-.key--arrow {
-  --key-bg: #e0e7ff;
-  --key-edge: #a5b4fc;
+  --key-bg: #dbe4f0;
+  --key-edge: #94a3b8;
 }
 
 .key-label {
-  font-size: clamp(15px, 2.1vh, 21px);
+  font-size: clamp(16px, 2.2vh, 23px);
   font-weight: 600;
   line-height: 1;
   padding-bottom: 2px;
+}
+
+.key--digit .key-label {
+  font-size: clamp(18px, 2.5vh, 26px);
+  font-weight: 800;
 }
 
 .key--util .key-label {
@@ -490,12 +490,6 @@ body {
 
 .key--caps .key-label {
   font-size: clamp(11px, 1.6vh, 14px);
-}
-
-.key--arrow .key-label {
-  font-size: clamp(18px, 2.5vh, 26px);
-  font-weight: 700;
-  padding-bottom: 3px;
 }
 
 .key-sub {
@@ -805,13 +799,13 @@ body {
   }
 
   .keyboard {
-    --key-h: clamp(38px, 6.4vh, 48px);
-    --key-gap: 4px;
+    --key-h: clamp(44px, 7.2vh, 56px);
+    --key-gap: 3px;
   }
 
   .keyboard-wrap {
-    padding: 10px;
-    border-radius: 20px;
+    padding: 8px;
+    border-radius: 14px;
   }
 
   .keyboard-area {
@@ -845,12 +839,13 @@ body {
   }
 
   .keyboard {
-    --key-h: clamp(32px, 6.2vh, 40px);
+    --key-h: clamp(36px, 7.2vh, 48px);
+    --key-gap: 2px;
   }
 
   .keyboard-wrap {
-    padding: 8px;
-    border-radius: 18px;
+    padding: 6px;
+    border-radius: 12px;
   }
 
   .brand-icon {

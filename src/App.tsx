@@ -368,8 +368,7 @@ export default function App() {
       event.code === "Space" ||
       event.code === "Enter" ||
       event.code === "Backspace" ||
-      event.code === "CapsLock" ||
-      event.code.startsWith("Arrow")
+      event.code === "CapsLock"
     ) {
       event.preventDefault();
     }
@@ -390,7 +389,6 @@ export default function App() {
       case "caps":
       case "tab":
       case "mod":
-      case "arrow":
         return;
       case "backspace":
         handleBackspace();
@@ -417,6 +415,7 @@ export default function App() {
       }
       case "letter":
       case "punct":
+      case "digit":
         handleCharKey(def, event);
         return;
     }
