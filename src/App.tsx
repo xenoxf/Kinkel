@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import * as sounds from "./audio/sounds";
+import { Key } from "./components/Key";
 import { Keyboard } from "./components/Keyboard";
 import { TextStage } from "./components/TextStage";
 import { SpeakerIcon, SpeakerOffIcon, TrashIcon } from "./components/Icons";
-import { CELL_W, LINE_H } from "./game/metrics";
+import { cellFromText, isBoardCell, type BoardCell } from "./game/board";
+import { CELL_W } from "./game/metrics";
 import {
   ACCENTS,
   KEY_BY_CODE,
@@ -12,28 +14,31 @@ import {
   type KeyDef,
 } from "./keyboard/layout";
 
-const STORAGE_TEXT = "kinkel:text-v1";
+const STORAGE_TEXT = "kinkel:board-v2";
+const STORAGE_TEXT_LEGACY = "kinkel:text-v1";
 const STORAGE_MUTED = "kinkel:muted-v1";
-const FLIGHT_SECONDS = 0.46;
+const FLIGHT_SECONDS = 0.52;
 
 interface Flight {
   id: number;
-  char: string;
+  /** La tecla completa que viaja y luego se queda en la pizarra. */
+  cell: BoardCell;
+  /** Tamaño real de la tecla en pantalla. */
+  width: number;
+  height: number;
   fromX: number;
   fromY: number;
   toX: number;
   toY: number;
-  /** Línea del texto donde aterrizará la letra. */
+  /** Línea del texto donde aterrizará la tecla. */
   line: number;
 }
 
 interface SpawnRequest {
-  char: string;
-  /** Código físico de la tecla, para saber de dónde despega. */
-  code: string;
+  cell: BoardCell;
 }
 
-function loadLines(): string[] {
+function loadLines(): BoardCell[][] {
   try {
     const raw = localStorage.getItem(STORAGE_TEXT);
     if (raw) {
@@ -41,15 +46,32 @@ function loadLines(): string[] {
       if (
         Array.isArray(parsed) &&
         parsed.length > 0 &&
+        parsed.every(
+          (line) => Array.isArray(line) && line.every(isBoardCell),
+        )
+      ) {
+        return (parsed as BoardCell[][]).slice(-80);
+      }
+    }
+
+    // Migración desde la versión que guardaba solo texto.
+    const legacyRaw = localStorage.getItem(STORAGE_TEXT_LEGACY);
+    if (legacyRaw) {
+      const parsed: unknown = JSON.parse(legacyRaw);
+      if (
+        Array.isArray(parsed) &&
+        parsed.length > 0 &&
         parsed.every((line) => typeof line === "string")
       ) {
-        return (parsed as string[]).slice(-80);
+        return (parsed as string[])
+          .map((line) => Array.from(line).map(cellFromText))
+          .slice(-80);
       }
     }
   } catch {
     /* datos corruptos: se empieza de cero */
   }
-  return [""];
+  return [[]];
 }
 
 function loadMuted(): boolean {
@@ -82,7 +104,7 @@ function usePrefersReducedMotion(): boolean {
 export default function App() {
   const reducedMotion = usePrefersReducedMotion();
 
-  const [lines, setLines] = useState<string[]>(loadLines);
+  const [lines, setLines] = useState<BoardCell[][]>(loadLines);
   const [flights, setFlights] = useState<Flight[]>([]);
   const [spawnQueue, setSpawnQueue] = useState<SpawnRequest[]>([]);
   const [pressed, setPressed] = useState<ReadonlySet<string>>(() => new Set());
@@ -136,6 +158,7 @@ export default function App() {
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_TEXT, JSON.stringify(lines.slice(-80)));
+      localStorage.removeItem(STORAGE_TEXT_LEGACY);
     } catch {
       /* sin almacenamiento: se ignora */
     }
@@ -148,17 +171,17 @@ export default function App() {
   }, [flashLine]);
 
   /**
-   * Procesa un carácter por vez: mide la tecla y su casilla destino,
-   * y lanza la letra voladora. Si la línea está llena, primero crea
-   * una línea nueva y se volverá a procesar en el siguiente render.
+   * Procesa un carácter por vez: mide la tecla completa y su casilla
+   * destino, y lanza la tecla voladora. Si la línea está llena, primero
+   * crea una línea nueva y se volverá a procesar en el siguiente render.
    */
   useEffect(() => {
     if (spawnQueue.length === 0) return;
 
     const request = spawnQueue[0];
-    const def = KEY_BY_CODE[request.code];
+    const def = KEY_BY_CODE[request.cell.code];
     const keyEl = def
-      ? document.querySelector<HTMLElement>(`[data-key="${def.code}"]`)
+      ? document.querySelector<HTMLElement>(`.keyboard [data-key="${def.code}"]`)
       : null;
 
     if (!def || !keyEl) {
@@ -174,7 +197,7 @@ export default function App() {
     const plannedCol = lines[lastIndex].length + pendingOnLast;
 
     if (plannedCol >= maxColsRef.current) {
-      setLines((prev) => [...prev, ""]);
+      setLines((prev) => [...prev, []]);
       return;
     }
 
@@ -189,13 +212,22 @@ export default function App() {
     const keyRect = keyEl.getBoundingClientRect();
     const lineRect = lineEl.getBoundingClientRect();
 
+    // La barra espaciadora mide 9u: se limita el ancho para que la tecla
+    // voladora no sea gigante, pero conserva el aspecto de una tecla.
+    const width = Math.min(keyRect.width, keyRect.height * 2.8);
+    const height = keyRect.height;
+    const cellCenterX = lineRect.left + plannedCol * CELL_W + CELL_W / 2;
+    const cellCenterY = lineRect.top + lineRect.height / 2;
+
     const flight: Flight = {
       id: ++flightSeq.current,
-      char: request.char,
-      fromX: keyRect.left + keyRect.width / 2 - CELL_W / 2,
-      fromY: keyRect.top + keyRect.height / 2 - LINE_H / 2,
-      toX: lineRect.left + plannedCol * CELL_W,
-      toY: lineRect.top + lineRect.height / 2 - LINE_H / 2,
+      cell: request.cell,
+      width,
+      height,
+      fromX: keyRect.left + keyRect.width / 2 - width / 2,
+      fromY: keyRect.top,
+      toX: cellCenterX - width / 2,
+      toY: cellCenterY - height / 2,
       line: lastIndex,
     };
 
@@ -216,32 +248,38 @@ export default function App() {
     setFlights((prev) => prev.filter((item) => item.id !== flight.id));
     setLines((prev) => {
       const next = [...prev];
-      while (next.length <= flight.line) next.push("");
-      next[flight.line] += flight.char;
+      while (next.length <= flight.line) next.push([]);
+      next[flight.line] = [...next[flight.line], flight.cell];
       return next;
     });
   };
 
-  const typeDirect = (char: string) => {
+  const typeDirect = (cell: BoardCell) => {
     setLines((prev) => {
       const next = [...prev];
       let index = next.length - 1;
       if (next[index].length >= maxColsRef.current) {
-        next.push("");
+        next.push([]);
         index += 1;
       }
-      next[index] += char;
+      next[index] = [...next[index], cell];
       return next;
     });
   };
 
-  const commitChar = (char: string, code: string) => {
+  const commitChar = (
+    char: string,
+    code: string,
+    shift: boolean,
+    caps: boolean,
+  ) => {
     sounds.playPop(char.codePointAt(0) ?? 0);
+    const cell: BoardCell = { char, code, shift, caps };
     if (reducedMotion) {
-      typeDirect(char);
+      typeDirect(cell);
       return;
     }
-    setSpawnQueue((queue) => [...queue, { char, code }]);
+    setSpawnQueue((queue) => [...queue, { cell }]);
   };
 
   const handleBackspace = () => {
@@ -267,7 +305,7 @@ export default function App() {
       const next = [...prev];
       const index = next.length - 1;
       if (next[index].length > 0) {
-        next[index] = Array.from(next[index]).slice(0, -1).join("");
+        next[index] = next[index].slice(0, -1);
         return next;
       }
       if (next.length > 1) next.pop();
@@ -281,7 +319,7 @@ export default function App() {
     const hasContent =
       lines[lastIndex].length > 0 ||
       flights.some((flight) => flight.line === lastIndex);
-    setLines((prev) => [...prev, ""]);
+    setLines((prev) => [...prev, []]);
     if (hasContent) {
       setFlashLine(lastIndex);
       sounds.playLineDone();
@@ -289,11 +327,9 @@ export default function App() {
   };
 
   const handleCharKey = (def: KeyDef, event: KeyboardEvent) => {
-    let char = resolveChar(
-      def,
-      event.shiftKey,
-      event.getModifierState("CapsLock"),
-    );
+    const shift = event.shiftKey;
+    const caps = event.getModifierState("CapsLock");
+    let char = resolveChar(def, shift, caps);
     if (!char) return;
 
     if (pendingAccent) {
@@ -303,11 +339,11 @@ export default function App() {
         char = composed;
       } else {
         // El acento no combina: se escribe tal cual y sigue la letra.
-        commitChar(pendingAccent, "BracketLeft");
+        commitChar(pendingAccent, "BracketLeft", pendingAccent === "¨", caps);
       }
     }
 
-    commitChar(char, def.code);
+    commitChar(char, def.code, shift, caps);
   };
 
   const handleKeyDown = (event: KeyboardEvent): void => {
@@ -332,7 +368,8 @@ export default function App() {
       event.code === "Space" ||
       event.code === "Enter" ||
       event.code === "Backspace" ||
-      event.code === "CapsLock"
+      event.code === "CapsLock" ||
+      event.code.startsWith("Arrow")
     ) {
       event.preventDefault();
     }
@@ -353,6 +390,7 @@ export default function App() {
       case "caps":
       case "tab":
       case "mod":
+      case "arrow":
         return;
       case "backspace":
         handleBackspace();
@@ -361,11 +399,12 @@ export default function App() {
         handleEnter();
         return;
       case "space": {
+        const caps = event.getModifierState("CapsLock");
         if (pendingAccent) {
-          commitChar(pendingAccent, "BracketLeft");
+          commitChar(pendingAccent, "BracketLeft", pendingAccent === "¨", caps);
           setPendingAccent(null);
         }
-        commitChar(" ", def.code);
+        commitChar(" ", def.code, event.shiftKey, caps);
         return;
       }
       case "dead": {
@@ -416,7 +455,7 @@ export default function App() {
   }, []);
 
   const clearAll = () => {
-    setLines([""]);
+    setLines([[]]);
     setFlights([]);
     setSpawnQueue([]);
     setPendingAccent(null);
@@ -479,45 +518,56 @@ export default function App() {
       </div>
 
       <div className="keyboard-area">
-        {accentHint ? (
-          <div className="accent-hint" aria-live="polite">
-            {accentHint}
-          </div>
-        ) : null}
-        <Keyboard
-          pressed={pressed}
-          shiftHeld={shiftHeld}
-          capsOn={capsOn}
-          pendingAccent={pendingAccent}
-        />
+        <div className="keyboard-stack">
+          {accentHint ? (
+            <div className="accent-hint" aria-live="polite">
+              {accentHint}
+            </div>
+          ) : null}
+          <Keyboard
+            pressed={pressed}
+            shiftHeld={shiftHeld}
+            capsOn={capsOn}
+            pendingAccent={pendingAccent}
+          />
+        </div>
       </div>
 
       <div className="flight-layer" aria-hidden="true">
         {flights.map((flight) => {
-          const arcY = Math.max(72, Math.min(flight.fromY, flight.toY) - 110);
+          const def = KEY_BY_CODE[flight.cell.code];
+          if (!def) return null;
+
+          const arcY = Math.max(18, Math.min(flight.fromY, flight.toY) - 84);
+
           return (
-            <motion.span
+            <motion.div
               key={flight.id}
-              className="flying-letter"
+              className="flying-key"
+              style={{ width: flight.width, height: flight.height }}
               initial={{
                 x: flight.fromX,
                 y: flight.fromY,
-                scale: 0.8,
+                scale: 1,
                 rotate: 0,
-                opacity: 0.95,
               }}
               animate={{
                 x: flight.toX,
                 y: [flight.fromY, arcY, flight.toY],
-                scale: [0.8, 1.25, 1],
-                rotate: [0, -8, 0],
-                opacity: [0.95, 1, 1],
+                scale: [1, 1.06, 0.55],
+                rotate: [0, -4, 0],
               }}
               transition={{ duration: FLIGHT_SECONDS, ease: "easeInOut" }}
               onAnimationComplete={() => landFlight(flight)}
             >
-              {flight.char === " " ? "\u00A0" : flight.char}
-            </motion.span>
+              <Key
+                def={def}
+                pressed={false}
+                shiftHeld={flight.cell.shift}
+                capsOn={flight.cell.caps}
+                accentPending={false}
+              />
+            </motion.div>
           );
         })}
       </div>

@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { HOME_KEYS, type KeyDef } from "../keyboard/layout";
 
 interface KeyProps {
@@ -6,6 +7,7 @@ interface KeyProps {
   shiftHeld: boolean;
   capsOn: boolean;
   accentPending: boolean;
+  style?: CSSProperties;
 }
 
 const UTILITY_KINDS = new Set([
@@ -18,7 +20,14 @@ const UTILITY_KINDS = new Set([
   "space",
 ]);
 
-export function Key({ def, pressed, shiftHeld, capsOn, accentPending }: KeyProps) {
+export function Key({
+  def,
+  pressed,
+  shiftHeld,
+  capsOn,
+  accentPending,
+  style,
+}: KeyProps) {
   const isLetter = def.kind === "letter";
   const upper = isLetter && shiftHeld !== capsOn;
   const useShiftGlyph = def.kind === "punct" && shiftHeld && def.shiftLabel !== undefined;
@@ -44,7 +53,7 @@ export function Key({ def, pressed, shiftHeld, capsOn, accentPending }: KeyProps
     <div
       className={classes}
       data-key={def.code}
-      style={{ gridColumnEnd: `span ${Math.round(def.width * 4)}` }}
+      style={style}
       aria-label={def.label}
     >
       {subLabel ? <span className="key-sub">{subLabel}</span> : null}

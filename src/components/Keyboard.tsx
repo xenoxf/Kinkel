@@ -1,4 +1,4 @@
-import { KEY_ROWS } from "../keyboard/layout";
+import { KEYBOARD_KEYS } from "../keyboard/layout";
 import { Key } from "./Key";
 
 interface KeyboardProps {
@@ -12,7 +12,7 @@ export function Keyboard({ pressed, shiftHeld, capsOn, pendingAccent }: Keyboard
   return (
     <div className="keyboard-wrap">
       <div className="keyboard" role="img" aria-label="Teclado latinoamericano en pantalla">
-        {KEY_ROWS.flat().map((def) => {
+        {KEYBOARD_KEYS.map((def) => {
           const accentPending =
             def.kind === "dead" &&
             pendingAccent !== null &&
@@ -26,6 +26,10 @@ export function Keyboard({ pressed, shiftHeld, capsOn, pendingAccent }: Keyboard
               shiftHeld={shiftHeld}
               capsOn={capsOn}
               accentPending={accentPending}
+              style={{
+                gridColumn: `${def.col * 4 + 1} / span ${Math.round(def.width * 4)}`,
+                gridRow: def.row + 1,
+              }}
             />
           );
         })}

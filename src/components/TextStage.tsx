@@ -1,8 +1,10 @@
 import { useEffect, useRef } from "react";
+import type { BoardCell } from "../game/board";
 import { CELL_W } from "../game/metrics";
+import { KEY_BY_CODE } from "../keyboard/layout";
 
 interface TextStageProps {
-  lines: string[];
+  lines: BoardCell[][];
   caret: { line: number; col: number };
   flashLine: number | null;
 }
@@ -17,7 +19,7 @@ export function TextStage({ lines, caret, flashLine }: TextStageProps) {
   const isEmpty = lines.length === 1 && lines[0].length === 0 && caret.col === 0;
 
   return (
-    <section className="stage" aria-label="Tus letras">
+    <section className="stage" aria-label="Tus teclas">
       <div className="stage-scroll">
         <div className="stage-lines">
           {lines.map((line, lineIndex) => (
@@ -35,11 +37,27 @@ export function TextStage({ lines, caret, flashLine }: TextStageProps) {
                 {lineIndex + 1}
               </span>
               <div className="line-text" data-line={lineIndex}>
-                {Array.from(line).map((char, charIndex) => (
-                  <span className="char" key={charIndex}>
-                    {char === " " ? "\u00A0" : char}
-                  </span>
-                ))}
+                {line.map((cell, cellIndex) => {
+                  const def = cell.code ? KEY_BY_CODE[cell.code] : undefined;
+                  const isSpace = cell.char === " ";
+
+                  return (
+                    <span className="char" key={cellIndex}>
+                      <span
+                        className={[
+                          "board-key",
+                          def ? `key--${def.finger}` : "key--mod",
+                          isSpace ? "board-key--space" : "",
+                        ]
+                          .filter(Boolean)
+                          .join(" ")}
+                        title={isSpace ? "Espacio" : cell.char}
+                      >
+                        {isSpace ? "\u00A0" : cell.char}
+                      </span>
+                    </span>
+                  );
+                })}
                 {caret.line === lineIndex ? (
                   <span
                     className="caret"
@@ -55,7 +73,7 @@ export function TextStage({ lines, caret, flashLine }: TextStageProps) {
       </div>
       {isEmpty ? (
         <p className="stage-empty">
-          Escribe en tu teclado y mira cómo vuelan tus letras…
+          Escribe en tu teclado y mira cómo vuelan tus teclas…
         </p>
       ) : null}
     </section>

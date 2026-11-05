@@ -10,6 +10,9 @@
  *   ZXCVBNM ,; .: -_
  *
  * `´` y `¨` son teclas muertas: se combinan con la vocal siguiente.
+ *
+ * Cada tecla tiene coordenadas en unidades (1u = una letra) para poder
+ * dibujar el bloque principal + el cluster de flechas a la derecha.
  */
 export type Finger =
   | "pinky-l"
@@ -33,7 +36,8 @@ export type KeyKind =
   | "caps"
   | "shift"
   | "tab"
-  | "mod";
+  | "mod"
+  | "arrow";
 
 export interface KeyDef {
   code: string;
@@ -41,13 +45,21 @@ export interface KeyDef {
   shiftLabel?: string;
   kind: KeyKind;
   finger: Finger;
-  /** Ancho en unidades de tecla (1u = una letra). */
+  /** Ancho en unidades de tecla. */
   width: number;
+  /** Fila (0 = números … 4 = barra espaciadora). */
+  row: number;
+  /** Columna en unidades de tecla. */
+  col: number;
   /** Tecla guía de la fila base (muescas en F y J). */
   home?: boolean;
 }
 
 export const HOME_KEYS = new Set(["KeyF", "KeyJ"]);
+
+/** Ancho total del dibujo: bloque principal (15u) + hueco + flechas (3u). */
+export const KEYBOARD_UNITS = 18.5;
+export const KEYBOARD_COLS = Math.round(KEYBOARD_UNITS * 4);
 
 export const ACCENTS: Record<string, { compose: Record<string, string> }> = {
   "´": {
@@ -69,7 +81,9 @@ export const ACCENTS: Record<string, { compose: Record<string, string> }> = {
   },
 };
 
-function letter(code: string, label: string, finger: Finger): KeyDef {
+type BaseKey = Omit<KeyDef, "row" | "col">;
+
+function letter(code: string, label: string, finger: Finger): BaseKey {
   return { code, label, kind: "letter", finger, width: 1 };
 }
 
@@ -79,7 +93,7 @@ function punct(
   shiftLabel: string,
   finger: Finger,
   width = 1,
-): KeyDef {
+): BaseKey {
   return { code, label, shiftLabel, kind: "punct", finger, width };
 }
 
@@ -89,87 +103,128 @@ function special(
   label: string,
   finger: Finger,
   width: number,
-): KeyDef {
+): BaseKey {
   return { code, label, kind, finger, width };
 }
 
-export const KEY_ROWS: KeyDef[][] = [
-  [
-    punct("Digit1", "1", "!", "pinky-l"),
-    punct("Digit2", "2", '"', "ring-l"),
-    punct("Digit3", "3", "#", "middle-l"),
-    punct("Digit4", "4", "$", "index-l"),
-    punct("Digit5", "5", "%", "index-l"),
-    punct("Digit6", "6", "&", "index-r"),
-    punct("Digit7", "7", "/", "index-r"),
-    punct("Digit8", "8", "(", "middle-r"),
-    punct("Digit9", "9", ")", "ring-r"),
-    punct("Digit0", "0", "=", "pinky-r"),
-    punct("Minus", "'", "?", "pinky-r"),
-    punct("Equal", "¡", "¿", "pinky-r"),
-    special("backspace", "Backspace", "Borrar", "pinky-r", 3),
-  ],
-  [
-    special("tab", "Tab", "Tab", "pinky-l", 2.5),
-    letter("KeyQ", "q", "pinky-l"),
-    letter("KeyW", "w", "ring-l"),
-    letter("KeyE", "e", "middle-l"),
-    letter("KeyR", "r", "index-l"),
-    letter("KeyT", "t", "index-l"),
-    letter("KeyY", "y", "index-r"),
-    letter("KeyU", "u", "index-r"),
-    letter("KeyI", "i", "middle-r"),
-    letter("KeyO", "o", "ring-r"),
-    letter("KeyP", "p", "pinky-r"),
-    {
-      code: "BracketLeft",
-      label: "´",
-      shiftLabel: "¨",
-      kind: "dead",
-      finger: "pinky-r",
-      width: 1,
-    },
-    punct("BracketRight", "+", "*", "pinky-r", 1.5),
-  ],
-  [
-    special("caps", "CapsLock", "Mayús", "pinky-l", 1.75),
-    letter("KeyA", "a", "pinky-l"),
-    letter("KeyS", "s", "ring-l"),
-    letter("KeyD", "d", "middle-l"),
-    letter("KeyF", "f", "index-l"),
-    letter("KeyG", "g", "index-l"),
-    letter("KeyH", "h", "index-r"),
-    letter("KeyJ", "j", "index-r"),
-    letter("KeyK", "k", "middle-r"),
-    letter("KeyL", "l", "ring-r"),
-    letter("Semicolon", "ñ", "pinky-r"),
-    special("enter", "Enter", "Enter", "pinky-r", 3.25),
-  ],
-  [
-    special("shift", "ShiftLeft", "⇧", "pinky-l", 2.5),
-    letter("KeyZ", "z", "pinky-l"),
-    letter("KeyX", "x", "ring-l"),
-    letter("KeyC", "c", "middle-l"),
-    letter("KeyV", "v", "index-l"),
-    letter("KeyB", "b", "index-l"),
-    letter("KeyN", "n", "index-r"),
-    letter("KeyM", "m", "index-r"),
-    punct("Comma", ",", ";", "middle-r"),
-    punct("Period", ".", ":", "ring-r"),
-    punct("Slash", "-", "_", "pinky-r"),
-    special("shift", "ShiftRight", "⇧", "pinky-r", 2.5),
-  ],
-  [
-    special("mod", "ControlLeft", "Ctrl", "mod", 1.5),
-    special("mod", "AltLeft", "Alt", "mod", 1.5),
-    special("space", "Space", "Espacio", "thumb", 9),
-    special("mod", "AltRight", "AltGr", "mod", 1.5),
-    special("mod", "ControlRight", "Ctrl", "mod", 1.5),
-  ],
+function arrow(
+  code: string,
+  label: string,
+  row: number,
+  col: number,
+): KeyDef {
+  return {
+    code,
+    label,
+    kind: "arrow",
+    finger: "mod",
+    width: 1,
+    row,
+    col,
+  };
+}
+
+function withColumns(keys: BaseKey[], row: number): KeyDef[] {
+  let col = 0;
+  return keys.map((key) => {
+    const placed: KeyDef = { ...key, row, col };
+    col += key.width;
+    return placed;
+  });
+}
+
+const ROW_NUMBERS: BaseKey[] = [
+  punct("Digit1", "1", "!", "pinky-l"),
+  punct("Digit2", "2", '"', "ring-l"),
+  punct("Digit3", "3", "#", "middle-l"),
+  punct("Digit4", "4", "$", "index-l"),
+  punct("Digit5", "5", "%", "index-l"),
+  punct("Digit6", "6", "&", "index-r"),
+  punct("Digit7", "7", "/", "index-r"),
+  punct("Digit8", "8", "(", "middle-r"),
+  punct("Digit9", "9", ")", "ring-r"),
+  punct("Digit0", "0", "=", "pinky-r"),
+  punct("Minus", "'", "?", "pinky-r"),
+  punct("Equal", "¡", "¿", "pinky-r"),
+  special("backspace", "Backspace", "Borrar", "pinky-r", 3),
+];
+
+const ROW_QWERTY: BaseKey[] = [
+  special("tab", "Tab", "Tab", "pinky-l", 2.5),
+  letter("KeyQ", "q", "pinky-l"),
+  letter("KeyW", "w", "ring-l"),
+  letter("KeyE", "e", "middle-l"),
+  letter("KeyR", "r", "index-l"),
+  letter("KeyT", "t", "index-l"),
+  letter("KeyY", "y", "index-r"),
+  letter("KeyU", "u", "index-r"),
+  letter("KeyI", "i", "middle-r"),
+  letter("KeyO", "o", "ring-r"),
+  letter("KeyP", "p", "pinky-r"),
+  {
+    code: "BracketLeft",
+    label: "´",
+    shiftLabel: "¨",
+    kind: "dead",
+    finger: "pinky-r",
+    width: 1,
+  },
+  punct("BracketRight", "+", "*", "pinky-r", 1.5),
+];
+
+const ROW_HOME: BaseKey[] = [
+  special("caps", "CapsLock", "Mayús", "pinky-l", 1.75),
+  letter("KeyA", "a", "pinky-l"),
+  letter("KeyS", "s", "ring-l"),
+  letter("KeyD", "d", "middle-l"),
+  letter("KeyF", "f", "index-l"),
+  letter("KeyG", "g", "index-l"),
+  letter("KeyH", "h", "index-r"),
+  letter("KeyJ", "j", "index-r"),
+  letter("KeyK", "k", "middle-r"),
+  letter("KeyL", "l", "ring-r"),
+  letter("Semicolon", "ñ", "pinky-r"),
+  special("enter", "Enter", "Enter", "pinky-r", 3.25),
+];
+
+const ROW_SHIFT: BaseKey[] = [
+  special("shift", "ShiftLeft", "⇧", "pinky-l", 2.5),
+  letter("KeyZ", "z", "pinky-l"),
+  letter("KeyX", "x", "ring-l"),
+  letter("KeyC", "c", "middle-l"),
+  letter("KeyV", "v", "index-l"),
+  letter("KeyB", "b", "index-l"),
+  letter("KeyN", "n", "index-r"),
+  letter("KeyM", "m", "index-r"),
+  punct("Comma", ",", ";", "middle-r"),
+  punct("Period", ".", ":", "ring-r"),
+  punct("Slash", "-", "_", "pinky-r"),
+  special("shift", "ShiftRight", "⇧", "pinky-r", 2.5),
+];
+
+const ROW_SPACE: BaseKey[] = [
+  special("mod", "ControlLeft", "Ctrl", "mod", 1.5),
+  special("mod", "AltLeft", "Alt", "mod", 1.5),
+  special("space", "Space", "Espacio", "thumb", 9),
+  special("mod", "AltRight", "AltGr", "mod", 1.5),
+  special("mod", "ControlRight", "Ctrl", "mod", 1.5),
+];
+
+export const KEYBOARD_KEYS: KeyDef[] = [
+  ...withColumns(ROW_NUMBERS, 0),
+  ...withColumns(ROW_QWERTY, 1),
+  ...withColumns(ROW_HOME, 2),
+  ...withColumns(ROW_SHIFT, 3),
+  ...withColumns(ROW_SPACE, 4),
+  // Cluster de flechas (estilo TKL), a la derecha del bloque principal.
+  arrow("ArrowUp", "↑", 3, 16.5),
+  arrow("ArrowLeft", "←", 4, 15.5),
+  arrow("ArrowDown", "↓", 4, 16.5),
+  arrow("ArrowRight", "→", 4, 17.5),
 ];
 
 export const KEY_BY_CODE: Record<string, KeyDef> = Object.fromEntries(
-  KEY_ROWS.flat().map((key) => [key.code, key]),
+  KEYBOARD_KEYS.map((key) => [key.code, key]),
 );
 
 /** Carácter que produce una tecla según Shift / Bloq Mayús. */
@@ -188,8 +243,4 @@ export function resolveChar(
     default:
       return null;
   }
-}
-
-export function isCharKey(def: KeyDef): boolean {
-  return def.kind === "letter" || def.kind === "punct";
 }

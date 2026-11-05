@@ -1,40 +1,49 @@
 # Kinkel 🐧
 
-Juego educativo de escritorio para que niños de **5 a 7 años** aprendan a escribir
-tocando el teclado. La app muestra un teclado grande en pantalla: al pulsar una
-tecla física, la letra **sale volando de la tecla** y aterriza en el texto que el
-niño va componiendo, línea a línea (Enter = nueva línea).
+App-juego de escritorio para que niños de **5 a 7 años** descubran el teclado
+de una forma divertida. El teclado es el protagonista: al pulsar una tecla, la
+**tecla completa** se ilumina, sale volando y aterriza en una pizarra donde
+queda como una **mini tecla**. No es una app de práctica de escritura: lo
+importante es ver, tocar y jugar con el teclado.
 
-Contenido en **español (Latinoamérica)**, teclado **LATAM** con Ñ y acentos.
+Contenido en **español (Latinoamérica)**, teclado **LATAM** con Ñ, acentos,
+teclas muertas y **cluster de flechas**.
 
-![Kinkel MVP](docs/kinkel-mvp.png)
+![Kinkel](docs/kinkel-mvp.png)
 
 ## Estado
 
 | Fase | Contenido | Estado |
 |------|-----------|--------|
 | 0 | Setup del proyecto y limpieza del template | ✅ |
-| 1 | MVP: teclado en pantalla, letras voladoras, texto línea a línea | ✅ |
+| 1 | MVP: teclado en pantalla, teclas voladoras, pizarra de teclas | ✅ |
 | 2 | Config de modos (libre/lecciones), pingüino mascota, estrellas, confetti | Pendiente |
 | 3 | Empaquetado desktop con Tauri (Windows/Linux/macOS) | Pendiente |
 
-## Qué incluye el MVP
+## Qué incluye
 
-- Teclado **LATAM** en pantalla (55 teclas) con distribución real:
-  `´`/`¨` como teclas muertas, `ñ`, `¡¿`, y fila de números con sus símbolos.
-- **Colores por dedo** (mecanografía): cada tecla se pinta según el dedo que debe
-  usarla, con marcas de posición guía en **F** y **J**.
-- La tecla se **hunde y brilla** al pulsarla.
-- La letra **vuela en arco** desde la tecla hasta su casilla del texto.
+- Teclado **LATAM** en pantalla de **59 teclas**: bloque principal de 55 +
+  **4 flechas** en un cluster aparte, con la distribución real (Ñ, ¡¿, `´` y
+  `¨` como teclas muertas).
+- **Colores por dedo** (mecanografía) y marcas de posición guía en **F** y **J**.
+- El teclado está **centrado y es el protagonista**; la pizarra queda compacta
+  arriba y en segundo plano.
+- Al pulsar, la tecla se **hunde y brilla** con un halo de luz.
+- La **tecla completa vuela** (fondo, padding, etiqueta y color de dedo) en
+  arco desde el teclado hasta la pizarra.
+- Al aterrizar, en la pizarra queda la **tecla completa como mini tecla**, no
+  una letra suelta. Los acentos se conservan: `´` + `a` queda como una tecla
+  con `á`.
+- La barra espaciadora vuela como una tecla y se dibuja como una barrita en la
+  pizarra.
 - **Shift** y **Bloq Mayús** cambian mayúsculas; los símbolos con Shift se
-  muestran en la tecla.
-- **Enter** abre una línea nueva y marca la anterior como completada.
-- **Backspace** borra (primero lo que está en el aire, luego el texto).
-- **Acentos**: `´` + vocal = á é í ó ú; `¨` + u = ü, con pista visual.
+  muestran en la tecla. **Enter** abre una línea nueva y **Backspace** borra.
+- **Flechas**: se iluminan al pulsarlas, pero no escriben ni lanzan teclas.
 - Sonidos sintetizados (Web Audio API), botón de silencio y borrado total con
   confirmación.
-- El texto se guarda solo (localStorage) y se conserva al reabrir.
-- Respeta `prefers-reduced-motion` (sin vuelos, texto directo).
+- La pizarra se guarda sola (localStorage) con el origen de cada tecla y se
+  conserva al reabrir. Los datos de la versión anterior se migran.
+- Respeta `prefers-reduced-motion` (sin vuelos, las teclas aparecen directo).
 
 ## Requisitos
 
@@ -60,13 +69,14 @@ pnpm tauri build  # genera los paquetes de la app
 
 ```
 src/
-  keyboard/layout.ts      # definición del teclado LATAM (teclas, dedos, acentos)
-  game/metrics.ts         # métricas del área de texto (celda y alto de línea)
+  keyboard/layout.ts      # teclado LATAM: teclas, coordenadas, dedos, flechas y acentos
+  game/board.ts           # celdas de la pizarra (carácter + tecla de origen)
+  game/metrics.ts         # métricas de la pizarra (celda y alto de línea)
   audio/sounds.ts         # sonidos sintetizados con Web Audio API (sin assets)
   components/
-    Keyboard.tsx          # teclado en pantalla
+    Keyboard.tsx          # teclado en pantalla sobre una grilla de 74 columnas
     Key.tsx               # tecla individual (color de dedo, estados)
-    TextStage.tsx         # hoja de texto con líneas, cursor y numeración
+    TextStage.tsx         # pizarra con mini teclas, cursor y numeración
     Icons.tsx             # iconos SVG
   App.tsx                 # entrada de teclado, vuelos y estado del juego
 src-tauri/                # shell desktop (Tauri 2)
@@ -79,7 +89,7 @@ src-tauri/                # shell desktop (Tauri 2)
   (tag `vX.Y.Z` + título + descripción), usando `gh`:
 
 ```bash
-git tag -a v0.1.0 -m "Kinkel v0.1.0"
-git push origin v0.1.0
-gh release create v0.1.0 --title "Kinkel v0.1.0" --notes "…"
+git tag -a v0.2.0 -m "Kinkel v0.2.0"
+git push origin v0.2.0
+gh release create v0.2.0 --title "Kinkel v0.2.0" --notes "…"
 ```
