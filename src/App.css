@@ -146,7 +146,7 @@ body {
 
 .stage-holder {
   position: absolute;
-  top: clamp(64px, 9.5vh, 88px);
+  top: clamp(68px, 10vh, 96px);
   left: 50%;
   transform: translateX(-50%);
   width: min(calc(100% - var(--gutter) * 2), 980px);
