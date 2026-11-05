@@ -1,0 +1,39 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  font-family: "Baloo 2", system-ui, sans-serif;
+  background: linear-gradient(180deg, #7dd3fc 0%, #bae6fd 55%, #e0f2fe 100%);
+  overflow: hidden;
+  user-select: none;
+}
+
+.app-shell {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.app-title {
+  font-size: 96px;
+  font-weight: 800;
+  color: #075985;
+  letter-spacing: 2px;
+}
+
+.app-tagline {
+  font-size: 28px;
+  color: #0c4a6e;
+}
