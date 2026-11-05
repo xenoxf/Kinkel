@@ -7,14 +7,34 @@ niño va componiendo, línea a línea (Enter = nueva línea).
 
 Contenido en **español (Latinoamérica)**, teclado **LATAM** con Ñ y acentos.
 
+![Kinkel MVP](docs/kinkel-mvp.png)
+
 ## Estado
 
 | Fase | Contenido | Estado |
 |------|-----------|--------|
 | 0 | Setup del proyecto y limpieza del template | ✅ |
-| 1 | MVP: teclado en pantalla, letras voladoras, texto línea a línea | 🚧 |
+| 1 | MVP: teclado en pantalla, letras voladoras, texto línea a línea | ✅ |
 | 2 | Config de modos (libre/lecciones), pingüino mascota, estrellas, confetti | Pendiente |
 | 3 | Empaquetado desktop con Tauri (Windows/Linux/macOS) | Pendiente |
+
+## Qué incluye el MVP
+
+- Teclado **LATAM** en pantalla (55 teclas) con distribución real:
+  `´`/`¨` como teclas muertas, `ñ`, `¡¿`, y fila de números con sus símbolos.
+- **Colores por dedo** (mecanografía): cada tecla se pinta según el dedo que debe
+  usarla, con marcas de posición guía en **F** y **J**.
+- La tecla se **hunde y brilla** al pulsarla.
+- La letra **vuela en arco** desde la tecla hasta su casilla del texto.
+- **Shift** y **Bloq Mayús** cambian mayúsculas; los símbolos con Shift se
+  muestran en la tecla.
+- **Enter** abre una línea nueva y marca la anterior como completada.
+- **Backspace** borra (primero lo que está en el aire, luego el texto).
+- **Acentos**: `´` + vocal = á é í ó ú; `¨` + u = ü, con pista visual.
+- Sonidos sintetizados (Web Audio API), botón de silencio y borrado total con
+  confirmación.
+- El texto se guarda solo (localStorage) y se conserva al reabrir.
+- Respeta `prefers-reduced-motion` (sin vuelos, texto directo).
 
 ## Requisitos
 
@@ -40,10 +60,15 @@ pnpm tauri build  # genera los paquetes de la app
 
 ```
 src/
-  keyboard/layout.ts      # definición del teclado LATAM (teclas, dedos, colores)
+  keyboard/layout.ts      # definición del teclado LATAM (teclas, dedos, acentos)
+  game/metrics.ts         # métricas del área de texto (celda y alto de línea)
   audio/sounds.ts         # sonidos sintetizados con Web Audio API (sin assets)
-  components/             # Keyboard, Key, TextStage, FlyingLetter…
-  App.tsx                 # composición principal y manejo de entrada
+  components/
+    Keyboard.tsx          # teclado en pantalla
+    Key.tsx               # tecla individual (color de dedo, estados)
+    TextStage.tsx         # hoja de texto con líneas, cursor y numeración
+    Icons.tsx             # iconos SVG
+  App.tsx                 # entrada de teclado, vuelos y estado del juego
 src-tauri/                # shell desktop (Tauri 2)
 ```
 
