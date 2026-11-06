@@ -1,10 +1,17 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { isTauri } from "@tauri-apps/api/core";
 import { motion } from "framer-motion";
 import * as sounds from "./audio/sounds";
+import { DownloadModal } from "./components/DownloadModal";
 import { Key } from "./components/Key";
 import { Keyboard } from "./components/Keyboard";
 import { TextStage } from "./components/TextStage";
-import { SpeakerIcon, SpeakerOffIcon, TrashIcon } from "./components/Icons";
+import {
+  DownloadIcon,
+  SpeakerIcon,
+  SpeakerOffIcon,
+  TrashIcon,
+} from "./components/Icons";
 import { cellFromText, isBoardCell, type BoardCell } from "./game/board";
 import { CELL_W } from "./game/metrics";
 import {
@@ -235,6 +242,7 @@ export default function App() {
   const [muted, setMuted] = useState(loadMuted);
   const [flashLine, setFlashLine] = useState<number | null>(null);
   const [confirmClear, setConfirmClear] = useState(false);
+  const [downloadOpen, setDownloadOpen] = useState(false);
   const [maxCols, setMaxCols] = useState(() =>
     Math.max(12, Math.floor((window.innerWidth - 320) / CELL_W)),
   );
@@ -243,6 +251,8 @@ export default function App() {
   const flightSeq = useRef(0);
   const maxColsRef = useRef(maxCols);
   const keyDownRef = useRef<(event: KeyboardEvent) => void>(() => {});
+  const isWeb = !isTauri();
+  const closeDownload = useCallback(() => setDownloadOpen(false), []);
 
   useEffect(() => {
     maxColsRef.current = maxCols;
@@ -532,10 +542,11 @@ export default function App() {
   };
 
   const handleKeyDown = (event: KeyboardEvent): void => {
-    if (confirmClear) {
+    if (confirmClear || downloadOpen) {
       if (event.key === "Escape") {
         event.preventDefault();
         setConfirmClear(false);
+        setDownloadOpen(false);
       }
       return;
     }
@@ -671,6 +682,22 @@ export default function App() {
           </div>
         </div>
         <div className="topbar-actions">
+          {isWeb ? (
+            <button
+              type="button"
+              className="icon-btn icon-btn--download"
+              onClick={(event) => {
+                setDownloadOpen(true);
+                event.currentTarget.blur();
+              }}
+              title="Descargar para escritorio"
+              aria-label="Descargar para escritorio"
+              aria-haspopup="dialog"
+              aria-expanded={downloadOpen}
+            >
+              <DownloadIcon />
+            </button>
+          ) : null}
           <button
             type="button"
             className="icon-btn"
@@ -804,6 +831,8 @@ export default function App() {
           </div>
         </div>
       ) : null}
+
+      {downloadOpen ? <DownloadModal onClose={closeDownload} /> : null}
     </div>
   );
 }

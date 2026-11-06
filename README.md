@@ -18,7 +18,7 @@ teclas muertas y su fila superior de números.
 | 0 | Setup del proyecto y limpieza del template | ✅ |
 | 1 | MVP: teclado en pantalla, teclas voladoras, pizarra de teclas | ✅ |
 | 2 | Config de modos (libre/lecciones), pingüino mascota, estrellas, confetti | Pendiente |
-| 3 | Empaquetado desktop con Tauri (Windows/Linux/macOS) | Pendiente |
+| 3 | Empaquetado desktop con Tauri + releases automáticos (Windows/macOS/Linux) | ✅ |
 
 ## Qué incluye
 
@@ -52,12 +52,17 @@ teclas muertas y su fila superior de números.
   con confirmación.
 - La pizarra se guarda sola (localStorage) con el origen de cada tecla y se
   conserva al reabrir. Los datos de la versión anterior se migran.
+- **Descarga desde la web**: al abrir la versión web aparece un botón de
+  descarga junto a sonido y borrar. Abre un modal con macOS, Windows y Linux,
+  consulta el último release de GitHub y enlaza directamente a sus
+  instaladores. En la app de escritorio el botón se oculta.
 - Respeta `prefers-reduced-motion` (sin vuelos, las teclas aparecen directo).
 
 ## Requisitos
 
 - Node.js + pnpm
-- (Fase 3) [Rust](https://rustup.rs/) para compilar la ventana desktop con Tauri
+- [Rust](https://rustup.rs/) solo si quieres compilar la ventana desktop en
+  tu equipo. Los releases oficiales se compilan en GitHub Actions.
 
 ## Desarrollo
 
@@ -67,12 +72,15 @@ pnpm dev        # abre la app en http://localhost:1420
 pnpm build      # typecheck (tsc) + build de producción
 ```
 
-### Desktop (fase 3)
+### Desktop
 
 ```bash
 pnpm tauri dev    # requiere Rust instalado
-pnpm tauri build  # genera los paquetes de la app
+pnpm tauri build  # genera los paquetes de la app para tu sistema
 ```
+
+Para instalar la app sin compilar, usa los instaladores del último release:
+[github.com/xenoxf/Kinkel/releases/latest](https://github.com/xenoxf/Kinkel/releases/latest).
 
 ## Estructura
 
@@ -86,19 +94,35 @@ src/
     Keyboard.tsx          # teclado en pantalla sobre una grilla de 74 columnas
     Key.tsx               # tecla individual (color de dedo, estados)
     TextStage.tsx         # pizarra con mini teclas, cursor y numeración
+    DownloadModal.tsx     # modal de descargas (macOS / Windows / Linux)
     Icons.tsx             # iconos SVG
   App.tsx                 # entrada de teclado, vuelos y estado del juego
 src-tauri/                # shell desktop (Tauri 2)
+.github/workflows/
+  release.yml             # builds y release automático al empujar un tag v*
 ```
 
 ## Versionado y releases
 
 - `main` es la rama principal; cada tarea terminada se commitea y pushea.
-- Las versiones se publican como **releases completos** en GitHub
-  (tag `vX.Y.Z` + título + descripción), usando `gh`:
+- La versión se mantiene sincronizada en `package.json`,
+  `src-tauri/tauri.conf.json` y `src-tauri/Cargo.toml`.
+- Para publicar, empuja un tag `vX.Y.Z`:
 
 ```bash
-git tag -a v0.3.1 -m "Kinkel v0.3.1"
-git push origin v0.3.1
-gh release create v0.3.1 --title "Kinkel v0.3.1" --notes "…"
+git tag -a v0.4.0 -m "Kinkel v0.4.0"
+git push origin v0.4.0
 ```
+
+El workflow [`.github/workflows/release.yml`](.github/workflows/release.yml)
+compila en GitHub Actions y crea el release con los instaladores:
+
+| Sistema | Artefactos |
+|---------|------------|
+| Windows | `.exe` (NSIS) y `.msi` |
+| macOS | `.dmg` universal (Apple Silicon + Intel) |
+| Linux | `.AppImage` y `.deb` |
+
+No hace falta compilar ni subir binarios desde el equipo local. El modal de
+descarga de la versión web consulta `releases/latest` de GitHub y enlaza al
+instalador correspondiente.
