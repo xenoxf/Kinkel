@@ -21,6 +21,7 @@ interface ReleaseAsset {
 
 interface ReleaseInfo {
   tag_name: string;
+  published_at: string;
   html_url: string;
   assets: ReleaseAsset[];
 }
@@ -34,34 +35,67 @@ interface Platform {
   id: PlatformId;
   name: string;
   detail: string;
-  extensions: string[];
+  primaryExtensions: string[];
+  alternateExtensions: string[];
 }
 
 const PLATFORMS: Platform[] = [
   {
     id: "macos",
     name: "macOS",
-    detail: "Apple Silicon e Intel · instalador .dmg",
-    extensions: [".dmg"],
+    detail: "Apple Silicon e Intel",
+    primaryExtensions: [".dmg"],
+    alternateExtensions: [],
   },
   {
     id: "windows",
     name: "Windows",
-    detail: "Windows 10 u 11 de 64 bits · .exe o .msi",
-    extensions: [".exe", ".msi"],
+    detail: "Windows 10 y 11 · 64 bits",
+    primaryExtensions: [".exe"],
+    alternateExtensions: [".msi"],
   },
   {
     id: "linux",
     name: "Linux",
-    detail: "64 bits · AppImage o paquete .deb",
-    extensions: [".appimage", ".deb"],
+    detail: "AppImage o deb",
+    primaryExtensions: [".appimage"],
+    alternateExtensions: [".deb"],
   },
 ];
 
 function platformIcon(id: PlatformId) {
-  if (id === "macos") return <AppleIcon size={26} />;
-  if (id === "windows") return <WindowsIcon size={24} />;
-  return <LinuxIcon size={26} />;
+  if (id === "macos") return <AppleIcon size={25} />;
+  if (id === "windows") return <WindowsIcon size={23} />;
+  return <LinuxIcon size={25} />;
+}
+
+function detectSystem(): { os: string; arch: string; id: string } {
+  const ua = navigator.userAgent;
+  const platform = navigator.platform || "";
+  let os = "tu sistema";
+  let id = "";
+  let arch = "";
+
+  if (/windows/i.test(ua)) {
+    os = "Windows";
+    id = "windows";
+  } else if (/macintosh|mac os x/i.test(ua)) {
+    os = "macOS";
+    id = "macos";
+  } else if (/linux/i.test(ua)) {
+    os = "Linux";
+    id = "linux";
+  }
+
+  if (/arm64|aarch64/i.test(ua) || /arm/i.test(platform)) {
+    arch = "ARM";
+  } else if (/x86_64|wow64|win64|amd64/i.test(ua)) {
+    arch = "x86_64";
+  } else if (id && /64/i.test(platform)) {
+    arch = "64 bits";
+  }
+
+  return { os, arch, id };
 }
 
 function pickAsset(
@@ -86,6 +120,28 @@ function formatSize(bytes: number): string {
   return `${megabytes.toFixed(megabytes >= 10 ? 0 : 1)} MB`;
 }
 
+function formatLabel(asset: ReleaseAsset): string {
+  const name = asset.name.toLowerCase();
+  if (name.endsWith(".dmg")) return "DMG";
+  if (name.endsWith(".msi")) return "MSI";
+  if (name.endsWith(".exe")) return "EXE";
+  if (name.endsWith(".appimage")) return "AppImage";
+  if (name.endsWith(".deb")) return "deb";
+  if (name.endsWith(".rpm")) return "rpm";
+  return "";
+}
+
+function formatDate(iso: string): string {
+  try {
+    return new Intl.DateTimeFormat("es-ES", {
+      month: "long",
+      year: "numeric",
+    }).format(new Date(iso));
+  } catch {
+    return "";
+  }
+}
+
 interface DownloadModalProps {
   onClose: () => void;
 }
@@ -93,6 +149,7 @@ interface DownloadModalProps {
 export function DownloadModal({ onClose }: DownloadModalProps) {
   const [state, setState] = useState<ReleaseState>({ status: "loading" });
   const closeRef = useRef<HTMLButtonElement>(null);
+  const system = detectSystem();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -137,6 +194,12 @@ export function DownloadModal({ onClose }: DownloadModalProps) {
 
   const release = state.status === "ready" ? state.release : null;
   const releasesUrl = release?.html_url ?? RELEASES_URL;
+  const where = system.arch ? `${system.os} · ${system.arch}` : system.os;
+  const statusLine = release
+    ? `${release.tag_name} · Estás en ${where} · ${formatDate(release.published_at)}`
+    : state.status === "loading"
+      ? "Buscando la última versión…"
+      : "Sin conexión con GitHub";
 
   return (
     <div
@@ -163,69 +226,77 @@ export function DownloadModal({ onClose }: DownloadModalProps) {
         </button>
 
         <div className="download-head">
-          <span className="download-badge" aria-hidden="true">
-            <DownloadIcon size={24} />
-          </span>
-          <div>
-            <h2 id="download-title">Descargar Kinkel</h2>
-            <p>
-              Elige tu sistema. Los instaladores se compilan y publican
-              automáticamente en GitHub Releases.
-            </p>
-          </div>
+          <h2 id="download-title">Descargar Kinkel</h2>
         </div>
+
+        <p className="download-status" aria-live="polite">
+          {statusLine}
+        </p>
 
         <div className="download-options">
           {PLATFORMS.map((platform) => {
-            const asset = pickAsset(release, platform.extensions);
-            const href = asset?.browser_download_url ?? releasesUrl;
+            const primary = pickAsset(release, platform.primaryExtensions);
+            const alternates = platform.alternateExtensions
+              .map((extension) => pickAsset(release, [extension]))
+              .filter((asset): asset is ReleaseAsset => Boolean(asset));
+            const active = platform.id === system.id;
 
             return (
-              <a
+              <div
                 key={platform.id}
-                className="download-card"
-                href={href}
-                target="_blank"
-                rel="noreferrer"
-                title={asset?.name ?? "Abrir GitHub Releases"}
+                className={`download-option${active ? " download-option--active" : ""}`}
               >
                 <span className={`download-os download-os--${platform.id}`}>
                   {platformIcon(platform.id)}
                 </span>
-                <span className="download-copy">
-                  <strong>{platform.name}</strong>
-                  <small>{platform.detail}</small>
-                </span>
-                <span className="download-meta">
-                  <DownloadIcon size={17} />
-                  {asset
-                    ? formatSize(asset.size) || "Descargar"
+                <strong className="download-name">{platform.name}</strong>
+                <small className="download-detail">{platform.detail}</small>
+
+                <a
+                  className="download-cta"
+                  href={primary?.browser_download_url ?? releasesUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  title={primary?.name ?? "Abrir GitHub Releases"}
+                >
+                  {primary
+                    ? `Descargar ${formatLabel(primary)}${formatSize(primary.size) ? ` · ${formatSize(primary.size)}` : ""}`
                     : state.status === "loading"
                       ? "Buscando…"
-                      : "Ver releases"}
-                </span>
-              </a>
+                      : "Descargar desde GitHub"}
+                  <DownloadIcon size={16} />
+                </a>
+
+                {alternates.length > 0 ? (
+                  <div className="download-alts">
+                    <span>También en</span>
+                    {alternates.map((asset) => (
+                      <a
+                        key={asset.name}
+                        href={asset.browser_download_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        title={asset.name}
+                      >
+                        {formatLabel(asset)}
+                        {formatSize(asset.size)
+                          ? ` · ${formatSize(asset.size)}`
+                          : ""}
+                      </a>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
             );
           })}
         </div>
 
-        <div className="download-footer">
-          <span aria-live="polite">
-            {state.status === "loading"
-              ? "Buscando la última versión…"
-              : state.status === "ready"
-                ? `Última versión: ${state.release.tag_name}`
-                : "No se pudo consultar GitHub."}
-          </span>
+        <p className="download-footer">
+          ¿No ves tu sistema?{" "}
           <a href={releasesUrl} target="_blank" rel="noreferrer">
-            Ver todas las versiones
+            Mira todas las versiones en GitHub
           </a>
-        </div>
-
-        <p className="download-note">
-          Las apps no están firmadas: macOS puede pedir abrirlas desde Ajustes
-          y Windows puede mostrar SmartScreen. Descárgalas solo desde este
-          repositorio oficial.
+          .
         </p>
       </div>
     </div>
