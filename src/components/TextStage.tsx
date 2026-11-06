@@ -39,21 +39,45 @@ export function TextStage({ lines, caret, flashLine }: TextStageProps) {
               <div className="line-text" data-line={lineIndex}>
                 {line.map((cell, cellIndex) => {
                   const def = cell.code ? KEY_BY_CODE[cell.code] : undefined;
-                  const isSpace = cell.char === " ";
+                  const kind = cell.kind ?? def?.kind;
+                  const finger = cell.finger ?? def?.finger ?? "mod";
+                  const isSpace = kind === "space" || cell.char === " ";
+                  const isUtility =
+                    kind === "enter" ||
+                    kind === "backspace" ||
+                    kind === "caps" ||
+                    kind === "shift" ||
+                    kind === "tab" ||
+                    kind === "mod" ||
+                    (!def && cell.char.length > 1);
+                  const label = isSpace
+                    ? "espacio"
+                    : isUtility && def
+                      ? def.label
+                      : cell.char;
+                  const sizeClass = isSpace
+                    ? ""
+                    : label.length >= 6
+                      ? "board-key--xs"
+                      : label.length >= 4
+                        ? "board-key--sm"
+                        : "";
 
                   return (
                     <span className="char" key={cellIndex}>
                       <span
                         className={[
                           "board-key",
-                          def ? `key--${def.finger}` : "key--mod",
+                          `key--${finger}`,
                           isSpace ? "board-key--space" : "",
+                          isUtility ? "board-key--util" : "",
+                          sizeClass,
                         ]
                           .filter(Boolean)
                           .join(" ")}
-                        title={isSpace ? "Espacio" : cell.char}
+                        title={label}
                       >
-                        {isSpace ? "\u00A0" : cell.char}
+                        {label}
                       </span>
                     </span>
                   );

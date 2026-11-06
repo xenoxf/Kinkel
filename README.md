@@ -34,14 +34,22 @@ teclas muertas y su fila superior de números.
 - Al aterrizar, en la pizarra queda la **tecla completa como mini tecla**, no
   una letra suelta. Los acentos se conservan: `´` + `a` queda como una tecla
   con `á`.
-- La barra espaciadora vuela como una tecla y se dibuja como una barrita en la
-  pizarra.
+- **Cualquier tecla deja su huella**: además de letras, números y signos, se
+  dibujan **Ctrl, Alt, Shift, Bloq Mayús, Tab, Enter, teclas muertas, flechas,
+  F1–F12 y teclas multimedia**. Las que no existen en el teclado LATAM de la
+  app **aparecen desde los alrededores del teclado** con un fundido suave y
+  siguen el mismo vuelo en arco hasta la pizarra.
+- La barra espaciadora vuela como una tecla y en la pizarra se lee
+  **“espacio”**, no una raya ni guiones.
 - **Shift** y **Bloq Mayús** cambian mayúsculas; los símbolos con Shift se
-  muestran en la tecla. **Enter** abre una línea nueva y **Backspace** borra.
+  muestran en la tecla. **Enter** abre una línea nueva (y también vuela) y
+  **Backspace** borra.
 - **Números en la fila superior**: `1–0` escriben dígitos y sus símbolos con
   Shift, igual que en un teclado LATAM real.
-- Sonidos sintetizados (Web Audio API), botón de silencio y borrado total con
-  confirmación.
+- **Cada tecla es una nota de piano**: un sintetizador con armónicos, filtro y
+  ruido de martillo (Web Audio API, sin assets). Las filas suenan en octavas
+  distintas y cada tecla conserva su nota. Botón de silencio y borrado total
+  con confirmación.
 - La pizarra se guarda sola (localStorage) con el origen de cada tecla y se
   conserva al reabrir. Los datos de la versión anterior se migran.
 - Respeta `prefers-reduced-motion` (sin vuelos, las teclas aparecen directo).

@@ -10,6 +10,7 @@ import { CELL_W } from "./game/metrics";
 import {
   ACCENTS,
   KEY_BY_CODE,
+  keyDefForEvent,
   resolveChar,
   type KeyDef,
 } from "./keyboard/layout";
@@ -19,9 +20,39 @@ const STORAGE_TEXT_LEGACY = "kinkel:text-v1";
 const STORAGE_MUTED = "kinkel:muted-v1";
 const FLIGHT_SECONDS = 0.52;
 
+const PREVENT_DEFAULT_CODES = new Set([
+  "Tab",
+  "Space",
+  "Enter",
+  "NumpadEnter",
+  "Backspace",
+  "CapsLock",
+  "ArrowUp",
+  "ArrowDown",
+  "ArrowLeft",
+  "ArrowRight",
+  "Home",
+  "End",
+  "PageUp",
+  "PageDown",
+  "Insert",
+  "Delete",
+]);
+
+function shouldPreventDefault(event: KeyboardEvent): boolean {
+  if (PREVENT_DEFAULT_CODES.has(event.code)) return true;
+  return (
+    /^F\d{1,2}$/.test(event.code) &&
+    !event.ctrlKey &&
+    !event.metaKey &&
+    !event.altKey
+  );
+}
+
 interface Flight {
   id: number;
   /** La tecla completa que viaja y luego se queda en la pizarra. */
+  def: KeyDef;
   cell: BoardCell;
   /** Tamaño real de la tecla en pantalla. */
   width: number;
@@ -32,10 +63,100 @@ interface Flight {
   toY: number;
   /** Línea del texto donde aterrizará la tecla. */
   line: number;
+  /** Tecla que no está en el dibujo: aparece desde los alrededores. */
+  remote: boolean;
 }
 
 interface SpawnRequest {
+  def: KeyDef;
   cell: BoardCell;
+  remote?: boolean;
+  /** Línea destino (Enter puede aterrizar en la línea anterior). */
+  line?: number;
+}
+
+function cellFromKey(
+  def: KeyDef,
+  char: string,
+  shift: boolean,
+  caps: boolean,
+): BoardCell {
+  return {
+    char,
+    code: def.code,
+    shift,
+    caps,
+    kind: def.kind,
+    finger: def.finger,
+  };
+}
+
+function hashText(value: string): number {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
+}
+
+/**
+ * Punto de aparición para teclas que no existen en el teclado de la app.
+ * Se elige un lado del teclado de forma estable según el código de la tecla,
+ * para que Ctrl siempre entre por el mismo lado y no baile entre pulsaciones.
+ */
+function spawnAroundKeyboard(
+  def: KeyDef,
+  width: number,
+  height: number,
+): { x: number; y: number } {
+  const wrap = document.querySelector<HTMLElement>(".keyboard-wrap");
+  const rect = wrap?.getBoundingClientRect();
+  const viewportW = window.innerWidth;
+  const viewportH = window.innerHeight;
+
+  if (!rect) {
+    return {
+      x: (viewportW - width) / 2,
+      y: viewportH - height - 24,
+    };
+  }
+
+  const hash = hashText(def.code);
+  const side = hash % 4;
+  const fraction = ((hash >>> 4) % 1000) / 1000;
+  const minX = -width * 0.35;
+  const maxX = viewportW - width * 0.65;
+  const minY = 8;
+  const maxY = viewportH - height - 8;
+
+  let x = rect.left + (rect.width - width) / 2;
+  let y = rect.top + (rect.height - height) / 2;
+
+  switch (side) {
+    case 0:
+      x = rect.left - width * 0.55;
+      y = rect.top + fraction * Math.max(0, rect.height - height);
+      break;
+    case 1:
+      x = rect.right - width * 0.45;
+      y = rect.top + fraction * Math.max(0, rect.height - height);
+      break;
+    case 2:
+      x = rect.left + fraction * Math.max(0, rect.width - width);
+      y = rect.top - height * 0.65;
+      break;
+    default:
+      x = rect.left + fraction * Math.max(0, rect.width - width);
+      y = rect.bottom - height * 0.35;
+      break;
+  }
+
+  return { x: clamp(x, minX, maxX), y: clamp(y, minY, maxY) };
 }
 
 function loadLines(): BoardCell[][] {
@@ -171,64 +292,105 @@ export default function App() {
   }, [flashLine]);
 
   /**
-   * Procesa un carácter por vez: mide la tecla completa y su casilla
-   * destino, y lanza la tecla voladora. Si la línea está llena, primero
-   * crea una línea nueva y se volverá a procesar en el siguiente render.
+   * Procesa una tecla por vez: mide la tecla completa (o el punto de
+   * aparición si no existe en el dibujo) y su casilla destino, y lanza
+   * la tecla voladora. Si la línea está llena, primero crea una línea
+   * nueva y se volverá a procesar en el siguiente render.
    */
   useEffect(() => {
     if (spawnQueue.length === 0) return;
 
     const request = spawnQueue[0];
-    const def = KEY_BY_CODE[request.cell.code];
-    const keyEl = def
-      ? document.querySelector<HTMLElement>(`.keyboard [data-key="${def.code}"]`)
-      : null;
-
-    if (!def || !keyEl) {
-      setSpawnQueue((queue) => queue.slice(1));
-      return;
-    }
+    const knownDef = KEY_BY_CODE[request.cell.code];
+    const keyEl =
+      request.remote || !knownDef
+        ? null
+        : document.querySelector<HTMLElement>(
+            `.keyboard [data-key="${knownDef.code}"]`,
+          );
 
     const lastIndex = lines.length - 1;
-    const pendingOnLast = flights.reduce(
-      (count, flight) => count + (flight.line === lastIndex ? 1 : 0),
-      0,
-    );
-    const plannedCol = lines[lastIndex].length + pendingOnLast;
+    let targetLine = Math.min(request.line ?? lastIndex, lastIndex);
+    if (targetLine < 0) targetLine = 0;
+
+    const pendingOn = (line: number) =>
+      flights.reduce(
+        (count, flight) => count + (flight.line === line ? 1 : 0),
+        0,
+      );
+
+    let plannedCol = lines[targetLine].length + pendingOn(targetLine);
 
     if (plannedCol >= maxColsRef.current) {
-      setLines((prev) => [...prev, []]);
-      return;
+      if (targetLine === lines.length - 1) {
+        setLines((prev) => [...prev, []]);
+        return;
+      }
+
+      // La línea de Enter ya se cerró y estaba llena: cae en la nueva.
+      targetLine = lines.length - 1;
+      plannedCol = lines[targetLine].length + pendingOn(targetLine);
+      if (plannedCol >= maxColsRef.current) {
+        setLines((prev) => [...prev, []]);
+        return;
+      }
     }
 
     const lineEl = document.querySelector<HTMLElement>(
-      `.line-text[data-line="${lastIndex}"]`,
+      `.line-text[data-line="${targetLine}"]`,
     );
-    if (!lineEl) {
-      setSpawnQueue((queue) => queue.slice(1));
-      return;
+    if (!lineEl) return;
+
+    const lineRect = lineEl.getBoundingClientRect();
+    const remote = keyEl === null;
+    let width = 0;
+    let height = 0;
+    let fromX = 0;
+    let fromY = 0;
+
+    if (keyEl) {
+      const keyRect = keyEl.getBoundingClientRect();
+
+      // La barra espaciadora mide 9u: se limita el ancho para que la tecla
+      // voladora no sea gigante, pero conserva el aspecto de una tecla.
+      width = Math.min(keyRect.width, keyRect.height * 2.8);
+      height = keyRect.height;
+      fromX = keyRect.left + keyRect.width / 2 - width / 2;
+      fromY = keyRect.top;
+    } else {
+      const sampleKey = document.querySelector<HTMLElement>(".keyboard .key");
+      const sampleRect = sampleKey?.getBoundingClientRect();
+      height = sampleRect?.height ?? 44;
+
+      const labelLength = Math.max(1, Array.from(request.def.label).length);
+      width = Math.max(
+        height * 1.1,
+        Math.min(
+          height * 2.6,
+          labelLength * height * 0.42 + height * 0.25,
+        ),
+      );
+
+      const origin = spawnAroundKeyboard(request.def, width, height);
+      fromX = origin.x;
+      fromY = origin.y;
     }
 
-    const keyRect = keyEl.getBoundingClientRect();
-    const lineRect = lineEl.getBoundingClientRect();
-
-    // La barra espaciadora mide 9u: se limita el ancho para que la tecla
-    // voladora no sea gigante, pero conserva el aspecto de una tecla.
-    const width = Math.min(keyRect.width, keyRect.height * 2.8);
-    const height = keyRect.height;
     const cellCenterX = lineRect.left + plannedCol * CELL_W + CELL_W / 2;
     const cellCenterY = lineRect.top + lineRect.height / 2;
 
     const flight: Flight = {
       id: ++flightSeq.current,
+      def: request.def,
       cell: request.cell,
       width,
       height,
-      fromX: keyRect.left + keyRect.width / 2 - width / 2,
-      fromY: keyRect.top,
+      fromX,
+      fromY,
       toX: cellCenterX - width / 2,
       toY: cellCenterY - height / 2,
-      line: lastIndex,
+      line: targetLine,
+      remote,
     };
 
     setFlights((prev) => [...prev, flight]);
@@ -254,37 +416,50 @@ export default function App() {
     });
   };
 
-  const typeDirect = (cell: BoardCell) => {
+  const typeDirect = (cell: BoardCell, line?: number) => {
     setLines((prev) => {
       const next = [...prev];
-      let index = next.length - 1;
+      let index =
+        line !== undefined && line >= 0 && line < next.length
+          ? line
+          : next.length - 1;
+
       if (next[index].length >= maxColsRef.current) {
-        next.push([]);
-        index += 1;
+        if (index === next.length - 1) {
+          next.push([]);
+          index = next.length - 1;
+        } else {
+          index = next.length - 1;
+          if (next[index].length >= maxColsRef.current) {
+            next.push([]);
+            index = next.length - 1;
+          }
+        }
       }
+
       next[index] = [...next[index], cell];
       return next;
     });
   };
 
-  const commitChar = (
-    char: string,
-    code: string,
-    shift: boolean,
-    caps: boolean,
+  const commitCell = (
+    def: KeyDef,
+    cell: BoardCell,
+    options?: { line?: number; remote?: boolean },
   ) => {
-    sounds.playPop(char.codePointAt(0) ?? 0);
-    const cell: BoardCell = { char, code, shift, caps };
     if (reducedMotion) {
-      typeDirect(cell);
+      typeDirect(cell, options?.line);
       return;
     }
-    setSpawnQueue((queue) => [...queue, { cell }]);
+
+    setSpawnQueue((queue) => [
+      ...queue,
+      { def, cell, remote: options?.remote, line: options?.line },
+    ]);
   };
 
   const handleBackspace = () => {
     setPendingAccent(null);
-    sounds.playBackspace();
 
     if (spawnQueue.length > 0) {
       setSpawnQueue((queue) => queue.slice(0, -1));
@@ -313,37 +488,47 @@ export default function App() {
     });
   };
 
-  const handleEnter = () => {
+  const handleEnter = (def: KeyDef, event: KeyboardEvent) => {
     setPendingAccent(null);
     const lastIndex = lines.length - 1;
     const hasContent =
       lines[lastIndex].length > 0 ||
       flights.some((flight) => flight.line === lastIndex);
+
+    commitCell(
+      def,
+      cellFromKey(
+        def,
+        def.label,
+        event.shiftKey,
+        event.getModifierState("CapsLock"),
+      ),
+      { line: lastIndex },
+    );
     setLines((prev) => [...prev, []]);
-    if (hasContent) {
-      setFlashLine(lastIndex);
-      sounds.playLineDone();
-    }
+
+    if (hasContent) setFlashLine(lastIndex);
   };
 
   const handleCharKey = (def: KeyDef, event: KeyboardEvent) => {
     const shift = event.shiftKey;
     const caps = event.getModifierState("CapsLock");
-    let char = resolveChar(def, shift, caps);
+    const known = KEY_BY_CODE[def.code];
+
+    let char = known
+      ? resolveChar(def, shift, caps)
+      : Array.from(event.key).length === 1
+        ? event.key
+        : def.label;
     if (!char) return;
 
     if (pendingAccent) {
       const composed = ACCENTS[pendingAccent]?.compose[char];
       setPendingAccent(null);
-      if (composed) {
-        char = composed;
-      } else {
-        // El acento no combina: se escribe tal cual y sigue la letra.
-        commitChar(pendingAccent, "BracketLeft", pendingAccent === "¨", caps);
-      }
+      if (composed) char = composed;
     }
 
-    commitChar(char, def.code, shift, caps);
+    commitCell(def, cellFromKey(def, char, shift, caps));
   };
 
   const handleKeyDown = (event: KeyboardEvent): void => {
@@ -355,23 +540,9 @@ export default function App() {
       return;
     }
 
-    const isModifierCode = /^(Control|Alt|Meta|Shift)/.test(event.code);
-    if ((event.ctrlKey || event.metaKey || event.altKey) && !isModifierCode) {
-      return;
-    }
+    const def = keyDefForEvent(event);
 
-    const def = KEY_BY_CODE[event.code];
-    if (!def) return;
-
-    if (
-      event.code === "Tab" ||
-      event.code === "Space" ||
-      event.code === "Enter" ||
-      event.code === "Backspace" ||
-      event.code === "CapsLock"
-    ) {
-      event.preventDefault();
-    }
+    if (shouldPreventDefault(event)) event.preventDefault();
 
     setPressed((prev) => {
       if (prev.has(event.code)) return prev;
@@ -384,25 +555,34 @@ export default function App() {
 
     if (event.repeat) return;
 
+    sounds.playKey(def.code);
+
     switch (def.kind) {
       case "shift":
       case "caps":
       case "tab":
       case "mod":
+        commitCell(
+          def,
+          cellFromKey(
+            def,
+            def.label,
+            event.shiftKey,
+            event.getModifierState("CapsLock"),
+          ),
+          { remote: Boolean(def.synthetic) },
+        );
         return;
       case "backspace":
         handleBackspace();
         return;
       case "enter":
-        handleEnter();
+        handleEnter(def, event);
         return;
       case "space": {
         const caps = event.getModifierState("CapsLock");
-        if (pendingAccent) {
-          commitChar(pendingAccent, "BracketLeft", pendingAccent === "¨", caps);
-          setPendingAccent(null);
-        }
-        commitChar(" ", def.code, event.shiftKey, caps);
+        setPendingAccent(null);
+        commitCell(def, cellFromKey(def, " ", event.shiftKey, caps));
         return;
       }
       case "dead": {
@@ -410,7 +590,15 @@ export default function App() {
           ? (def.shiftLabel ?? def.label)
           : def.label;
         setPendingAccent(accent);
-        sounds.playAccent();
+        commitCell(
+          def,
+          cellFromKey(
+            def,
+            def.label,
+            event.shiftKey,
+            event.getModifierState("CapsLock"),
+          ),
+        );
         return;
       }
       case "letter":
@@ -533,10 +721,8 @@ export default function App() {
 
       <div className="flight-layer" aria-hidden="true">
         {flights.map((flight) => {
-          const def = KEY_BY_CODE[flight.cell.code];
-          if (!def) return null;
-
           const arcY = Math.max(18, Math.min(flight.fromY, flight.toY) - 84);
+          const tilt = flight.remote ? (hashText(flight.def.code) % 2 ? 9 : -9) : 0;
 
           return (
             <motion.div
@@ -546,20 +732,28 @@ export default function App() {
               initial={{
                 x: flight.fromX,
                 y: flight.fromY,
-                scale: 1,
-                rotate: 0,
+                scale: flight.remote ? 0.3 : 1,
+                rotate: tilt,
+                opacity: flight.remote ? 0 : 1,
               }}
               animate={{
                 x: flight.toX,
                 y: [flight.fromY, arcY, flight.toY],
-                scale: [1, 1.06, 0.55],
-                rotate: [0, -4, 0],
+                scale: flight.remote ? [0.3, 1.06, 0.55] : [1, 1.06, 0.55],
+                rotate: [tilt, -4, 0],
+                opacity: [flight.remote ? 0 : 1, 1, 1],
               }}
-              transition={{ duration: FLIGHT_SECONDS, ease: "easeInOut" }}
+              transition={{
+                duration: FLIGHT_SECONDS,
+                ease: "easeInOut",
+                opacity: flight.remote
+                  ? { duration: 0.18, ease: "easeOut" }
+                  : { duration: FLIGHT_SECONDS, ease: "easeInOut" },
+              }}
               onAnimationComplete={() => landFlight(flight)}
             >
               <Key
-                def={def}
+                def={flight.def}
                 pressed={false}
                 shiftHeld={flight.cell.shift}
                 capsOn={flight.cell.caps}

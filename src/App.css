@@ -50,18 +50,13 @@ body {
   z-index: 0;
   pointer-events: none;
   background:
-    radial-gradient(closest-side, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0) 70%)
-      8% 15% / 230px 88px no-repeat,
-    radial-gradient(closest-side, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0) 70%)
-      74% 34% / 320px 108px no-repeat,
-    radial-gradient(closest-side, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0) 70%)
-      42% 6% / 190px 70px no-repeat,
-    radial-gradient(
-      circle at 91% 9%,
+    radial-gradient(closest-side, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0) 70%) 8% 15% / 230px 88px no-repeat,
+    radial-gradient(closest-side, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0) 70%) 74% 34% / 320px 108px no-repeat,
+    radial-gradient(closest-side, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0) 70%) 42% 6% / 190px 70px no-repeat,
+    radial-gradient(circle at 91% 9%,
       #ffe9a0 0 46px,
       rgba(255, 233, 160, 0.4) 47px,
-      rgba(255, 233, 160, 0) 118px
-    );
+      rgba(255, 233, 160, 0) 118px);
 }
 
 .topbar,
@@ -146,7 +141,7 @@ body {
 
 .stage-holder {
   position: absolute;
-  top: clamp(72px, 11vh, 104px);
+  top: 84px;
   left: 50%;
   transform: translateX(-50%);
   width: min(calc(100% - var(--gutter) * 2), 980px);
@@ -274,35 +269,47 @@ body {
   align-items: center;
   justify-content: center;
   border-radius: 6px;
-  background: linear-gradient(
-    180deg,
-    #ffffff 0%,
-    var(--key-bg, #eef2f7) 26%,
-    var(--key-bg, #eef2f7) 100%
-  );
+  background: linear-gradient(180deg,
+      #ffffff 0%,
+      var(--key-bg, #eef2f7) 26%,
+      var(--key-bg, #eef2f7) 100%);
   border: 1px solid rgba(15, 23, 42, 0.1);
   box-shadow:
     0 2px 0 var(--key-edge, #cbd5e1),
     0 4px 7px -4px rgba(15, 23, 42, 0.4),
     inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  padding: 0 2px;
+  overflow: hidden;
   font-size: 17px;
   font-weight: 700;
   line-height: 1;
+  white-space: nowrap;
   color: #1e3a4c;
   animation: boardKeyPop 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.25) both;
 }
 
-/* La barra espaciadora se dibuja como una barrita, sin texto visible. */
-.board-key--space {
-  font-size: 0;
+/* La barra espaciadora se lee como palabra, no como una raya. */
+.board-key.board-key--space {
+  font-size: 8px;
+  letter-spacing: 0.02em;
+  color: #475569;
 }
 
-.board-key--space::after {
-  content: "";
-  width: 16px;
-  height: 4px;
-  border-radius: 2px;
-  background: #94a3b8;
+/* Ctrl, Alt, Shift, Enter, F5… caben en una mini tecla. */
+.board-key.board-key--util {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: #475569;
+}
+
+.board-key.board-key--sm {
+  font-size: 9px;
+}
+
+.board-key.board-key--xs {
+  font-size: 7.5px;
+  letter-spacing: 0;
 }
 
 .caret {
@@ -368,35 +375,20 @@ body {
   --deck-pad: clamp(7px, 1vh, 12px);
   --key-gap: clamp(3px, 0.45vh, 5px);
   --key-h-max: 8vh;
-  --key-h: clamp(
-    18px,
-    min(
-      var(--key-h-max),
-      calc(
-        (
-            100vw - 2 * var(--gutter, 0px) - 2 * var(--deck-margin) -
-              2 * var(--deck-pad) - 4px - 14 * var(--key-gap)
-          ) / 18.75
-      )
-    ),
-    76px
-  );
+  --key-h: clamp(18px,
+      min(var(--key-h-max),
+        calc((100vw - 2 * var(--gutter, 0px) - 2 * var(--deck-margin) - 2 * var(--deck-pad) - 4px - 14 * var(--key-gap)) / 18.75)),
+      76px);
   --key-font: clamp(11px, calc(var(--key-h) * 0.38), 24px);
-  width: min(
-    calc(100% - var(--deck-margin) * 2),
-    calc(
-      var(--key-h) * 18.75 + 14 * var(--key-gap) + var(--deck-pad) * 2 + 4px
-    )
-  );
+  width: min(calc(100% - var(--deck-margin) * 2),
+      calc(var(--key-h) * 18.75 + 14 * var(--key-gap) + var(--deck-pad) * 2 + 4px));
   margin-inline: auto;
   padding: var(--deck-pad);
   border-radius: clamp(14px, 1.8vh, 20px);
   border: 2px solid rgba(255, 255, 255, 0.9);
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.8) 0%,
-    rgba(236, 248, 255, 0.62) 100%
-  );
+  background: linear-gradient(180deg,
+      rgba(255, 255, 255, 0.8) 0%,
+      rgba(236, 248, 255, 0.62) 100%);
   box-shadow:
     0 36px 64px -38px rgba(7, 89, 133, 0.6),
     inset 0 1px 0 #ffffff,
@@ -419,12 +411,10 @@ body {
   align-items: center;
   justify-content: center;
   border-radius: clamp(6px, 0.85vh, 9px);
-  background: linear-gradient(
-    180deg,
-    #ffffff 0%,
-    var(--key-bg) 18%,
-    var(--key-bg) 100%
-  );
+  background: linear-gradient(180deg,
+      #ffffff 0%,
+      var(--key-bg) 18%,
+      var(--key-bg) 100%);
   border: 1px solid rgba(15, 23, 42, 0.09);
   box-shadow:
     0 4px 0 var(--key-edge),
@@ -440,34 +430,42 @@ body {
   --key-bg: #ffa1b8;
   --key-edge: #f43f5e;
 }
+
 .key--ring-l {
   --key-bg: #ffb877;
   --key-edge: #f97316;
 }
+
 .key--middle-l {
   --key-bg: #ffe45c;
   --key-edge: #eab308;
 }
+
 .key--index-l {
   --key-bg: #86f0a8;
   --key-edge: #22c55e;
 }
+
 .key--index-r {
   --key-bg: #5fe8d2;
   --key-edge: #0d9488;
 }
+
 .key--middle-r {
   --key-bg: #85c8ff;
   --key-edge: #3b82f6;
 }
+
 .key--ring-r {
   --key-bg: #bda4ff;
   --key-edge: #8b5cf6;
 }
+
 .key--pinky-r {
   --key-bg: #ffa3d4;
   --key-edge: #ec4899;
 }
+
 .key--thumb,
 .key--mod {
   --key-bg: #dbe4f0;
@@ -669,20 +667,24 @@ body {
 /* ---------- Animaciones ---------- */
 
 @keyframes brandBob {
+
   0%,
   100% {
     transform: translateY(0) rotate(-2deg);
   }
+
   50% {
     transform: translateY(-4px) rotate(2deg);
   }
 }
 
 @keyframes caretBlink {
+
   0%,
   54% {
     opacity: 1;
   }
+
   55%,
   100% {
     opacity: 0;
@@ -693,6 +695,7 @@ body {
   0% {
     background: rgba(250, 204, 21, 0.3);
   }
+
   100% {
     background: transparent;
   }
@@ -703,10 +706,12 @@ body {
     transform: scale(0.3) translateY(-8px);
     opacity: 0;
   }
+
   65% {
     transform: scale(1.1) translateY(0);
     opacity: 1;
   }
+
   100% {
     transform: scale(1) translateY(0);
     opacity: 1;
@@ -714,6 +719,7 @@ body {
 }
 
 @keyframes accentPulse {
+
   0%,
   100% {
     box-shadow:
@@ -721,6 +727,7 @@ body {
       0 0 0 0 rgba(14, 165, 233, 0),
       0 7px 12px -8px rgba(15, 23, 42, 0.45);
   }
+
   50% {
     box-shadow:
       0 4px 0 var(--key-edge),
@@ -734,6 +741,7 @@ body {
     transform: translate(-50%, -6px);
     opacity: 0;
   }
+
   to {
     transform: translate(-50%, 0);
     opacity: 1;
@@ -744,6 +752,7 @@ body {
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -754,6 +763,7 @@ body {
     transform: translateY(10px) scale(0.96);
     opacity: 0;
   }
+
   to {
     transform: translateY(0) scale(1);
     opacity: 1;
@@ -931,6 +941,7 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
+
   *,
   *::before,
   *::after {

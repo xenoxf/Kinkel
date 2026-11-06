@@ -52,6 +52,8 @@ export interface KeyDef {
   col: number;
   /** Tecla guía de la fila base (muescas en F y J). */
   home?: boolean;
+  /** Tecla que no existe en el dibujo LATAM y se genera al vuelo. */
+  synthetic?: boolean;
 }
 
 export const HOME_KEYS = new Set(["KeyF", "KeyJ"]);
@@ -223,4 +225,138 @@ export function resolveChar(
     default:
       return null;
   }
+}
+
+/**
+ * Etiquetas legibles para teclas que no están en el dibujo LATAM:
+ * modificadores, flechas, teclas de función, multimedia, etc.
+ */
+const FALLBACK_LABELS: Record<string, string> = {
+  Escape: "Esc",
+  ControlLeft: "Ctrl",
+  ControlRight: "Ctrl",
+  AltLeft: "Alt",
+  AltRight: "AltGr",
+  MetaLeft: "Meta",
+  MetaRight: "Meta",
+  OSLeft: "Meta",
+  OSRight: "Meta",
+  ContextMenu: "Menú",
+  ArrowUp: "↑",
+  ArrowDown: "↓",
+  ArrowLeft: "←",
+  ArrowRight: "→",
+  Insert: "Ins",
+  Delete: "Supr",
+  Home: "Inicio",
+  End: "Fin",
+  PageUp: "RePág",
+  PageDown: "AvPág",
+  PrintScreen: "ImprPant",
+  ScrollLock: "BloqDespl",
+  Pause: "Pausa",
+  NumLock: "Num",
+  NumpadEnter: "Enter",
+  NumpadAdd: "+",
+  NumpadSubtract: "-",
+  NumpadMultiply: "*",
+  NumpadDivide: "/",
+  NumpadDecimal: ".",
+  NumpadComma: ",",
+  Backquote: "`",
+  Quote: "'",
+  IntlBackslash: "\\",
+  IntlRo: "\\",
+  IntlYen: "¥",
+  Lang1: "한/영",
+  Lang2: "한자",
+  KanaMode: "かな",
+  MediaPlayPause: "⏯",
+  MediaStop: "⏹",
+  MediaTrackNext: "⏭",
+  MediaTrackPrevious: "⏮",
+  AudioVolumeMute: "Mut",
+  AudioVolumeDown: "Vol−",
+  AudioVolumeUp: "Vol+",
+  BrowserBack: "Atrás",
+  BrowserForward: "Adelante",
+  BrowserRefresh: "Recargar",
+  BrowserStop: "Detener",
+  BrowserSearch: "Buscar",
+  BrowserFavorites: "Favoritos",
+  BrowserHome: "Inicio",
+};
+
+const SYNTHETIC_FINGERS: Finger[] = [
+  "pinky-l",
+  "ring-l",
+  "middle-l",
+  "index-l",
+  "index-r",
+  "middle-r",
+  "ring-r",
+  "pinky-r",
+];
+
+function hashText(value: string): number {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function isPrintableKey(value: string): boolean {
+  return Array.from(value).length === 1 && value !== " " && value !== "Dead";
+}
+
+/** Texto que se muestra para una tecla física, incluso si no está en el dibujo. */
+export function labelForEvent(event: KeyboardEvent): string {
+  const known = KEY_BY_CODE[event.code];
+  if (known) return known.label;
+
+  const mapped = FALLBACK_LABELS[event.code];
+  if (mapped) return mapped;
+
+  if (/^F\d{1,2}$/.test(event.code)) return event.code;
+  if (/^Numpad\d$/.test(event.code)) return event.code.slice(-1);
+
+  if (isPrintableKey(event.key)) return event.key;
+  if (
+    event.key.length > 0 &&
+    event.key.length <= 4 &&
+    event.key !== "Unidentified"
+  ) {
+    return event.key;
+  }
+
+  return event.code || "Tecla";
+}
+
+/**
+ * Devuelve la tecla del dibujo LATAM o crea una tecla sintética para que
+ * cualquier pulsación (Ctrl, Alt, F5, flechas, teclas multimedia…) pueda
+ * volar hasta la pizarra.
+ */
+export function keyDefForEvent(event: KeyboardEvent): KeyDef {
+  const known = KEY_BY_CODE[event.code];
+  if (known) return known;
+
+  const label = labelForEvent(event);
+  const printable = isPrintableKey(event.key);
+  const finger = printable
+    ? SYNTHETIC_FINGERS[hashText(event.code || label) % SYNTHETIC_FINGERS.length]
+    : "mod";
+
+  return {
+    code: event.code || label,
+    label,
+    kind: printable ? "punct" : "mod",
+    finger,
+    width: 1,
+    row: -1,
+    col: 0,
+    synthetic: true,
+  };
 }
