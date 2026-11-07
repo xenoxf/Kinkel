@@ -52,10 +52,10 @@ teclas muertas y su fila superior de números.
   con confirmación.
 - La pizarra se guarda sola (localStorage) con el origen de cada tecla y se
   conserva al reabrir. Los datos de la versión anterior se migran.
-- **Descarga desde la web**: al abrir la versión web aparece un botón de
-  descarga junto a sonido y borrar. Abre un modal con macOS, Windows y Linux,
-  consulta el último release de GitHub y enlaza directamente a sus
-  instaladores. En la app de escritorio el botón se oculta.
+- **Descarga desde la web**: junto a sonido y borrar aparece un botón que
+  abre un modal mínimo con macOS, Windows y Linux; cada botón **Descargar**
+  enlaza directo al instalador de la última versión. En la app de escritorio
+  el botón se oculta.
 - Respeta `prefers-reduced-motion` (sin vuelos, las teclas aparecen directo).
 
 ## Requisitos
@@ -121,8 +121,7 @@ compila en GitHub Actions y crea el release con los instaladores:
 |---------|------------|
 | Windows | `.exe` (NSIS) y `.msi` |
 | macOS | `.dmg` universal (Apple Silicon + Intel) |
-| Linux | `.AppImage` y `.deb` |
+| Linux | `.AppImage`, `.deb` y `.rpm` |
 
 No hace falta compilar ni subir binarios desde el equipo local. El modal de
-descarga de la versión web consulta `releases/latest` de GitHub y enlaza al
-instalador correspondiente.
+descarga de la versión web construye las URLs directas de esos instaladores.

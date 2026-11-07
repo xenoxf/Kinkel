@@ -24,7 +24,7 @@ jobs:
             args: --target universal-apple-darwin --bundles app,dmg
           - label: Linux
             platform: ubuntu-22.04
-            args: --bundles deb,appimage
+            args: --bundles deb,appimage,rpm
           - label: Windows
             platform: windows-latest
             args: --bundles nsis,msi
@@ -90,7 +90,7 @@ jobs:
 
             - **Windows 10/11 (64 bits):** instalador `.exe` (NSIS) o `.msi`.
             - **macOS (Apple Silicon e Intel):** `.dmg` universal.
-            - **Linux (64 bits):** `.AppImage` o paquete `.deb`.
+            - **Linux (64 bits):** `.AppImage`, `.deb` o `.rpm`.
 
             ### Notas de instalación
 
