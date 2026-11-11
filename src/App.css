@@ -59,10 +59,20 @@ body {
       rgba(255, 233, 160, 0) 118px);
 }
 
-.topbar,
-.stage-holder,
-.keyboard-area {
+.topbar {
   z-index: 1;
+}
+
+.container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  width: 80%;
 }
 
 /* ---------- Barra superior ---------- */
@@ -250,8 +260,9 @@ body {
 }
 
 .char {
-  flex: 0 0 var(--cell, 36px);
-  width: var(--cell, 36px);
+  /* El ancho lo fija boardView.ts según la etiqueta de cada tecla. */
+  flex: 0 0 var(--cell-w, var(--cell, 36px));
+  width: var(--cell-w, var(--cell, 36px));
   height: 100%;
   display: flex;
   align-items: center;
@@ -260,7 +271,7 @@ body {
 
 /* Mini tecla que se queda en la pizarra al aterrizar la tecla voladora. */
 .board-key {
-  width: calc(var(--cell, 36px) - 2px);
+  width: calc(var(--cell-w, var(--cell, 36px)) - 3px);
   height: 28px;
   display: flex;
   align-items: center;
@@ -277,7 +288,8 @@ body {
     inset 0 1px 0 rgba(255, 255, 255, 0.9);
   padding: 0 2px;
   overflow: hidden;
-  font-size: 17px;
+  /* La medida sale del ancho de la tecla: nunca se encoge a 7-10px. */
+  font-size: var(--board-key-font, 17px);
   font-weight: 700;
   line-height: 1;
   white-space: nowrap;
@@ -287,26 +299,14 @@ body {
 
 /* La barra espaciadora se lee como palabra, no como una raya. */
 .board-key.board-key--space {
-  font-size: 8px;
-  letter-spacing: 0.02em;
-  color: #475569;
-}
-
-/* Ctrl, Alt, Shift, Enter, F5… caben en una mini tecla. */
-.board-key.board-key--util {
-  font-size: 10px;
-  font-weight: 700;
   letter-spacing: 0.01em;
   color: #475569;
 }
 
-.board-key.board-key--sm {
-  font-size: 9px;
-}
-
-.board-key.board-key--xs {
-  font-size: 7.5px;
-  letter-spacing: 0;
+/* Ctrl, Alt, Shift, Enter, F5… comparten el tamaño legible del resto. */
+.board-key.board-key--util {
+  letter-spacing: 0.01em;
+  color: #475569;
 }
 
 .caret {
@@ -1036,10 +1036,6 @@ body {
     font-size: 11px;
   }
 
-  .board-key {
-    font-size: 16px;
-  }
-
   .keyboard-wrap {
     --key-h-max: 7.6vh;
     --key-gap: 3px;
@@ -1071,10 +1067,6 @@ body {
     width: 22px;
     height: 22px;
     margin-right: 8px;
-  }
-
-  .board-key {
-    font-size: 15px;
   }
 
   .keyboard-wrap {

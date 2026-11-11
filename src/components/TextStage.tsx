@@ -1,11 +1,11 @@
 import { useEffect, useRef } from "react";
+import type { CSSProperties } from "react";
 import type { BoardCell } from "../game/board";
-import { CELL_W } from "../game/metrics";
-import { KEY_BY_CODE } from "../keyboard/layout";
+import { boardKeyView } from "../game/boardView";
 
 interface TextStageProps {
   lines: BoardCell[][];
-  caret: { line: number; col: number };
+  caret: { line: number; offset: number };
   flashLine: number | null;
 }
 
@@ -14,9 +14,9 @@ export function TextStage({ lines, caret, flashLine }: TextStageProps) {
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: "nearest" });
-  }, [lines.length, caret.line, caret.col]);
+  }, [lines.length, caret.line, caret.offset]);
 
-  const isEmpty = lines.length === 1 && lines[0].length === 0 && caret.col === 0;
+  const isEmpty = lines.length === 1 && lines[0].length === 0 && caret.offset === 0;
 
   return (
     <section className="stage" aria-label="Tus teclas">
@@ -38,46 +38,26 @@ export function TextStage({ lines, caret, flashLine }: TextStageProps) {
               </span>
               <div className="line-text" data-line={lineIndex}>
                 {line.map((cell, cellIndex) => {
-                  const def = cell.code ? KEY_BY_CODE[cell.code] : undefined;
-                  const kind = cell.kind ?? def?.kind;
-                  const finger = cell.finger ?? def?.finger ?? "mod";
-                  const isSpace = kind === "space" || cell.char === " ";
-                  const isUtility =
-                    kind === "enter" ||
-                    kind === "backspace" ||
-                    kind === "caps" ||
-                    kind === "shift" ||
-                    kind === "tab" ||
-                    kind === "mod" ||
-                    (!def && cell.char.length > 1);
-                  const label = isSpace
-                    ? "espacio"
-                    : isUtility && def
-                      ? def.label
-                      : cell.char;
-                  const sizeClass = isSpace
-                    ? ""
-                    : label.length >= 6
-                      ? "board-key--xs"
-                      : label.length >= 4
-                        ? "board-key--sm"
-                        : "";
+                  const view = boardKeyView(cell);
+                  const cellStyle = {
+                    "--cell-w": `${view.width}px`,
+                    "--board-key-font": `${view.fontSize}px`,
+                  } as CSSProperties;
 
                   return (
-                    <span className="char" key={cellIndex}>
+                    <span className="char" key={cellIndex} style={cellStyle}>
                       <span
                         className={[
                           "board-key",
-                          `key--${finger}`,
-                          isSpace ? "board-key--space" : "",
-                          isUtility ? "board-key--util" : "",
-                          sizeClass,
+                          `key--${view.finger}`,
+                          view.isSpace ? "board-key--space" : "",
+                          view.isUtility ? "board-key--util" : "",
                         ]
                           .filter(Boolean)
                           .join(" ")}
-                        title={label}
+                        title={view.label}
                       >
-                        {label}
+                        {view.label}
                       </span>
                     </span>
                   );
@@ -85,7 +65,7 @@ export function TextStage({ lines, caret, flashLine }: TextStageProps) {
                 {caret.line === lineIndex ? (
                   <span
                     className="caret"
-                    style={{ transform: `translateX(${caret.col * CELL_W}px)` }}
+                    style={{ transform: `translateX(${caret.offset}px)` }}
                     aria-hidden="true"
                   />
                 ) : null}

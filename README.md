@@ -88,6 +88,7 @@ Para instalar la app sin compilar, usa los instaladores del último release:
 src/
   keyboard/layout.ts      # teclado LATAM: teclas, coordenadas, dedos y acentos
   game/board.ts           # celdas de la pizarra (carácter + tecla de origen)
+  game/boardView.ts       # ancho variable y tamaño legible de cada mini tecla
   game/metrics.ts         # métricas de la pizarra (celda y alto de línea)
   audio/sounds.ts         # sonidos sintetizados con Web Audio API (sin assets)
   components/

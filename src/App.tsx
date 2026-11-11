@@ -13,6 +13,11 @@ import {
   TrashIcon,
 } from "./components/Icons";
 import { cellFromText, isBoardCell, type BoardCell } from "./game/board";
+import {
+  BOARD_KEY_GAP,
+  boardCellUnits,
+  boardCellsUnits,
+} from "./game/boardView";
 import { CELL_W } from "./game/metrics";
 import {
   ACCENTS,
@@ -64,6 +69,8 @@ interface Flight {
   /** Tamaño real de la tecla en pantalla. */
   width: number;
   height: number;
+  /** Escala final para aterrizar del tamaño de la mini tecla. */
+  endScale: number;
   fromX: number;
   fromY: number;
   toX: number;
@@ -243,22 +250,22 @@ export default function App() {
   const [flashLine, setFlashLine] = useState<number | null>(null);
   const [confirmClear, setConfirmClear] = useState(false);
   const [downloadOpen, setDownloadOpen] = useState(false);
-  const [maxCols, setMaxCols] = useState(() =>
-    Math.max(12, Math.floor((window.innerWidth - 320) / CELL_W)),
+  const [maxLineUnits, setMaxLineUnits] = useState(() =>
+    Math.max(10, Math.floor((window.innerWidth - 320) / CELL_W)),
   );
 
   const stageHolderRef = useRef<HTMLDivElement>(null);
   const flightSeq = useRef(0);
-  const maxColsRef = useRef(maxCols);
-  const keyDownRef = useRef<(event: KeyboardEvent) => void>(() => {});
+  const maxLineUnitsRef = useRef(maxLineUnits);
+  const keyDownRef = useRef<(event: KeyboardEvent) => void>(() => { });
   const isWeb = !isTauri();
   const closeDownload = useCallback(() => setDownloadOpen(false), []);
 
   useEffect(() => {
-    maxColsRef.current = maxCols;
-  }, [maxCols]);
+    maxLineUnitsRef.current = maxLineUnits;
+  }, [maxLineUnits]);
 
-  // Ancho disponible para el texto → cuántos caracteres caben por línea.
+  // Ancho disponible para el texto → cuántas unidades de letra caben por línea.
   useEffect(() => {
     const holder = stageHolderRef.current;
     if (!holder) return;
@@ -267,7 +274,7 @@ export default function App() {
       const sample = holder.querySelector<HTMLElement>(".line-text");
       const width = sample?.clientWidth ?? 0;
       if (width > 60) {
-        setMaxCols(Math.max(10, Math.floor(width / CELL_W)));
+        setMaxLineUnits(Math.max(10, Math.floor(width / CELL_W)));
       }
     };
 
@@ -316,22 +323,25 @@ export default function App() {
       request.remote || !knownDef
         ? null
         : document.querySelector<HTMLElement>(
-            `.keyboard [data-key="${knownDef.code}"]`,
-          );
+          `.keyboard [data-key="${knownDef.code}"]`,
+        );
 
     const lastIndex = lines.length - 1;
     let targetLine = Math.min(request.line ?? lastIndex, lastIndex);
     if (targetLine < 0) targetLine = 0;
 
-    const pendingOn = (line: number) =>
+    const pendingUnitsOn = (line: number) =>
       flights.reduce(
-        (count, flight) => count + (flight.line === line ? 1 : 0),
+        (units, flight) =>
+          units + (flight.line === line ? boardCellUnits(flight.cell) : 0),
         0,
       );
 
-    let plannedCol = lines[targetLine].length + pendingOn(targetLine);
+    const cellUnits = boardCellUnits(request.cell);
+    let plannedUnits =
+      boardCellsUnits(lines[targetLine]) + pendingUnitsOn(targetLine);
 
-    if (plannedCol >= maxColsRef.current) {
+    if (plannedUnits + cellUnits > maxLineUnitsRef.current) {
       if (targetLine === lines.length - 1) {
         setLines((prev) => [...prev, []]);
         return;
@@ -339,8 +349,9 @@ export default function App() {
 
       // La línea de Enter ya se cerró y estaba llena: cae en la nueva.
       targetLine = lines.length - 1;
-      plannedCol = lines[targetLine].length + pendingOn(targetLine);
-      if (plannedCol >= maxColsRef.current) {
+      plannedUnits =
+        boardCellsUnits(lines[targetLine]) + pendingUnitsOn(targetLine);
+      if (plannedUnits + cellUnits > maxLineUnitsRef.current) {
         setLines((prev) => [...prev, []]);
         return;
       }
@@ -386,8 +397,12 @@ export default function App() {
       fromY = origin.y;
     }
 
-    const cellCenterX = lineRect.left + plannedCol * CELL_W + CELL_W / 2;
+    const cellWidth = cellUnits * CELL_W;
+    const cellCenterX =
+      lineRect.left + plannedUnits * CELL_W + cellWidth / 2;
     const cellCenterY = lineRect.top + lineRect.height / 2;
+    const targetWidth = Math.max(CELL_W * 0.6, cellWidth - BOARD_KEY_GAP);
+    const endScale = clamp(targetWidth / width, 0.22, 0.9);
 
     const flight: Flight = {
       id: ++flightSeq.current,
@@ -395,6 +410,7 @@ export default function App() {
       cell: request.cell,
       width,
       height,
+      endScale,
       fromX,
       fromY,
       toX: cellCenterX - width / 2,
@@ -409,11 +425,15 @@ export default function App() {
 
   const caret = useMemo(() => {
     const last = lines.length - 1;
-    const pending = flights.reduce(
-      (count, flight) => count + (flight.line === last ? 1 : 0),
+    const pendingUnits = flights.reduce(
+      (units, flight) =>
+        units + (flight.line === last ? boardCellUnits(flight.cell) : 0),
       0,
     );
-    return { line: last, col: lines[last].length + pending };
+    return {
+      line: last,
+      offset: (boardCellsUnits(lines[last]) + pendingUnits) * CELL_W,
+    };
   }, [lines, flights]);
 
   const landFlight = (flight: Flight) => {
@@ -434,13 +454,19 @@ export default function App() {
           ? line
           : next.length - 1;
 
-      if (next[index].length >= maxColsRef.current) {
+      if (
+        boardCellsUnits(next[index]) + boardCellUnits(cell) >
+        maxLineUnitsRef.current
+      ) {
         if (index === next.length - 1) {
           next.push([]);
           index = next.length - 1;
         } else {
           index = next.length - 1;
-          if (next[index].length >= maxColsRef.current) {
+          if (
+            boardCellsUnits(next[index]) + boardCellUnits(cell) >
+            maxLineUnitsRef.current
+          ) {
             next.push([]);
             index = next.length - 1;
           }
@@ -726,25 +752,28 @@ export default function App() {
         </div>
       </header>
 
-      <div className="stage-holder" ref={stageHolderRef}>
-        <TextStage lines={lines} caret={caret} flashLine={flashLine} />
-      </div>
+      <div className="container">
+        <div className="stage-holder" ref={stageHolderRef}>
+          <TextStage lines={lines} caret={caret} flashLine={flashLine} />
+        </div>
 
-      <div className="keyboard-area">
-        <div className="keyboard-stack">
-          {accentHint ? (
-            <div className="accent-hint" aria-live="polite">
-              {accentHint}
-            </div>
-          ) : null}
-          <Keyboard
-            pressed={pressed}
-            shiftHeld={shiftHeld}
-            capsOn={capsOn}
-            pendingAccent={pendingAccent}
-          />
+        <div className="keyboard-area">
+          <div className="keyboard-stack">
+            {accentHint ? (
+              <div className="accent-hint" aria-live="polite">
+                {accentHint}
+              </div>
+            ) : null}
+            <Keyboard
+              pressed={pressed}
+              shiftHeld={shiftHeld}
+              capsOn={capsOn}
+              pendingAccent={pendingAccent}
+            />
+          </div>
         </div>
       </div>
+
 
       <div className="flight-layer" aria-hidden="true">
         {flights.map((flight) => {
@@ -766,7 +795,9 @@ export default function App() {
               animate={{
                 x: flight.toX,
                 y: [flight.fromY, arcY, flight.toY],
-                scale: flight.remote ? [0.3, 1.06, 0.55] : [1, 1.06, 0.55],
+                scale: flight.remote
+                  ? [0.3, 1.06, flight.endScale]
+                  : [1, 1.06, flight.endScale],
                 rotate: [tilt, -4, 0],
                 opacity: [flight.remote ? 0 : 1, 1, 1],
               }}
