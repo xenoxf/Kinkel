@@ -281,8 +281,14 @@ interface TypingSession {
   errors: number;
   /** Cambia con cada error para re-animar la sacudida. */
   shake: number;
+  /** Reloj monotónico del primer carácter correcto (performance.now, ms). */
   startedAt: number | null;
   result: LessonResult | null;
+}
+
+/** Reloj monotónico en ms (performance.now), con Date.now como respaldo. */
+function monotonicNow(): number {
+  return typeof performance !== "undefined" ? performance.now() : Date.now();
 }
 
 function freshTypingSession(): TypingSession {
@@ -749,13 +755,16 @@ export default function App() {
     const expected = targetChars[targetIndex];
 
     if (sameTypedChar(produced, expected)) {
-      const startedAt = session.startedAt ?? Date.now();
+      const startedAt = session.startedAt ?? monotonicNow();
       const cursor = targetIndex + 1;
       const done = cursor >= targetChars.length;
       let result: LessonResult | null = null;
 
       if (done) {
-        const ppm = computePpm(targetChars.length, Date.now() - startedAt);
+        // Reloj monotónico: en Tauri (WebKitGTK) o en ráfagas de tecleo el
+        // delta de Date.now() puede llegar a 0 e inflar/congelar el medidor.
+        const elapsed = Math.max(250, monotonicNow() - startedAt);
+        const ppm = computePpm(targetChars.length, elapsed);
         const accuracy = computeAccuracy(
           targetChars.length,
           session.errors,
