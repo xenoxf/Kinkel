@@ -25,11 +25,38 @@ import {
   keyDefForEvent,
   resolveChar,
   type KeyDef,
+  type Finger,
 } from "./keyboard/layout";
+import {
+  BookIcon,
+  EyeIcon,
+  EyeOffIcon,
+  KeyboardIcon,
+  PenguinIcon,
+} from "./components/Icons";
+import { loadMode, modeTagline, saveMode, MODES } from "./modes/registry";
+import type { ModeId } from "./modes/types";
+import { Hands } from "./modes/typing/Hands";
+import { TypingStage } from "./modes/typing/TypingStage";
+import { TextMenu } from "./modes/typing/TextMenu";
+import { TEXT_BY_ID, TYPING_TEXTS } from "./modes/typing/content";
+import { keyForChar } from "./modes/typing/keysFor";
+import {
+  computeAccuracy,
+  computePpm,
+  loadTypingProgress,
+  recordKeyError,
+  recordLessonResult,
+  saveTypingProgress,
+  starsFor,
+  type LessonResult,
+  type TypingProgress,
+} from "./modes/typing/stats";
 
 const STORAGE_TEXT = "kinkel:board-v2";
 const STORAGE_TEXT_LEGACY = "kinkel:text-v1";
 const STORAGE_MUTED = "kinkel:muted-v1";
+const STORAGE_HANDS = "kinkel:hands-v1";
 const FLIGHT_SECONDS = 0.52;
 
 const PREVENT_DEFAULT_CODES = new Set([
@@ -79,6 +106,8 @@ interface Flight {
   line: number;
   /** Tecla que no está en el dibujo: aparece desde los alrededores. */
   remote: boolean;
+  /** Índice de carácter destino en el modo mecanografía. */
+  typingIndex?: number;
 }
 
 interface SpawnRequest {
@@ -87,6 +116,7 @@ interface SpawnRequest {
   remote?: boolean;
   /** Línea destino (Enter puede aterrizar en la línea anterior). */
   line?: number;
+  typingIndex?: number;
 }
 
 function cellFromKey(
@@ -217,6 +247,48 @@ function loadMuted(): boolean {
   }
 }
 
+function loadHandsHidden(): boolean {
+  try {
+    return localStorage.getItem(STORAGE_HANDS) === "1";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Al escribir no importan ni las mayúsculas ni las tildes: `h` vale por `H`
+ * e `i` vale por `í`. La ñ sí cuenta como letra aparte del alfabeto.
+ */
+const ENYE_SLOT = "\u0000";
+
+function typingFold(text: string): string {
+  return text
+    .toLocaleLowerCase("es")
+    .replace(/\u00f1/g, ENYE_SLOT) // la ñ no se descompone: es una letra distinta
+    .normalize("NFD")
+    .replace(/\p{M}+/gu, "") // quita tildes y diéresis (á→a, ü→u, …)
+    .replace(new RegExp(ENYE_SLOT, "g"), "\u00f1");
+}
+
+function sameTypedChar(a: string, b: string): boolean {
+  return typingFold(a) === typingFold(b);
+}
+
+/** Sesión de escritura para el modo mecanografía (solo en memoria). */
+interface TypingSession {
+  /** Índice del próximo carácter del texto objetivo. */
+  cursor: number;
+  errors: number;
+  /** Cambia con cada error para re-animar la sacudida. */
+  shake: number;
+  startedAt: number | null;
+  result: LessonResult | null;
+}
+
+function freshTypingSession(): TypingSession {
+  return { cursor: 0, errors: 0, shake: 0, startedAt: null, result: null };
+}
+
 function usePrefersReducedMotion(): boolean {
   const [reduced, setReduced] = useState(() => {
     try {
@@ -246,10 +318,31 @@ export default function App() {
   const [shiftHeld, setShiftHeld] = useState(false);
   const [capsOn, setCapsOn] = useState(false);
   const [pendingAccent, setPendingAccent] = useState<string | null>(null);
+  // Espejo síncrono: varias teclas muertas/letras pueden procesarse en el
+  // mismo tick y deben ver el acento pendiente más reciente.
+  const pendingAccentRef = useRef<string | null>(null);
+  const updatePendingAccent = (value: string | null) => {
+    pendingAccentRef.current = value;
+    setPendingAccent(value);
+  };
   const [muted, setMuted] = useState(loadMuted);
   const [flashLine, setFlashLine] = useState<number | null>(null);
   const [confirmClear, setConfirmClear] = useState(false);
   const [downloadOpen, setDownloadOpen] = useState(false);
+  const [mode, setMode] = useState<ModeId>(loadMode);
+  const [typingProgress, setTypingProgress] =
+    useState<TypingProgress>(loadTypingProgress);
+  const [textId, setTextId] = useState<string>(() => {
+    const saved = loadTypingProgress().lastLessonId;
+    return saved && TEXT_BY_ID.has(saved) ? saved : TYPING_TEXTS[0].id;
+  });
+  const [textPickerOpen, setTextPickerOpen] = useState(false);
+  const [handsHidden, setHandsHidden] = useState(loadHandsHidden);
+  const [typingSession, setTypingSession] =
+    useState<TypingSession>(freshTypingSession);
+  // Espejo síncrono de la sesión: la rama de mecanografía debe leer siempre
+  // el estado más reciente aunque varios keydowns caigan en el mismo tick.
+  const typingSessionRef = useRef(typingSession);
   const [maxLineUnits, setMaxLineUnits] = useState(() =>
     Math.max(10, Math.floor((window.innerWidth - 320) / CELL_W)),
   );
@@ -260,6 +353,65 @@ export default function App() {
   const keyDownRef = useRef<(event: KeyboardEvent) => void>(() => { });
   const isWeb = !isTauri();
   const closeDownload = useCallback(() => setDownloadOpen(false), []);
+
+  // El modo vive también en <html> para que el fondo de la página siga el tema.
+  useEffect(() => {
+    document.documentElement.dataset.mode = mode;
+    return () => {
+      delete document.documentElement.dataset.mode;
+    };
+  }, [mode]);
+
+  const typingText = TEXT_BY_ID.get(textId) ?? TYPING_TEXTS[0];
+  const targetChars = useMemo(
+    () => Array.from(typingText.contenido),
+    [typingText],
+  );
+
+  const switchMode = (next: ModeId) => {
+    if (next === mode) return;
+    setMode(next);
+    saveMode(next);
+    updatePendingAccent(null);
+  };
+
+  const persistLastLesson = useCallback((id: string) => {
+    setTypingProgress((prev) => {
+      if (prev.lastLessonId === id) return prev;
+      const next = { ...prev, lastLessonId: id };
+      saveTypingProgress(next);
+      return next;
+    });
+  }, []);
+
+  const resetTyping = (id?: string) => {
+    const target = id ?? textId;
+    const fresh = freshTypingSession();
+    setTextId(target);
+    setTypingSession(fresh);
+    typingSessionRef.current = fresh;
+    updatePendingAccent(null);
+    persistLastLesson(target);
+  };
+
+  const nextText = (() => {
+    const index = TYPING_TEXTS.findIndex((entry) => entry.id === textId);
+    if (index < 0 || index >= TYPING_TEXTS.length - 1) return null;
+    const next = TYPING_TEXTS[index + 1];
+    return () => resetTyping(next.id);
+  })();
+
+  const toggleHands = () => {
+    setHandsHidden((hidden) => {
+      const next = !hidden;
+      try {
+        localStorage.setItem(STORAGE_HANDS, next ? "1" : "0");
+      } catch {
+        /* sin almacenamiento: se ignora */
+      }
+      return next;
+    });
+  };
 
   useEffect(() => {
     maxLineUnitsRef.current = maxLineUnits;
@@ -318,6 +470,46 @@ export default function App() {
     if (spawnQueue.length === 0) return;
 
     const request = spawnQueue[0];
+
+    // Modo mecanografía: la tecla vuela hasta el hueco del carácter actual.
+    if (request.typingIndex !== undefined) {
+      const keyEl =
+        document.querySelector<HTMLElement>(
+          `.keyboard [data-key="${request.cell.code}"]`,
+        );
+      const slotEl = document.querySelector<HTMLElement>(
+        `.typing-text [data-idx="${request.typingIndex}"]`,
+      );
+
+      if (keyEl && slotEl) {
+        const keyRect = keyEl.getBoundingClientRect();
+        const slotRect = slotEl.getBoundingClientRect();
+        const width = Math.min(keyRect.width, keyRect.height * 2.8);
+        const height = keyRect.height;
+
+        const flight: Flight = {
+          id: ++flightSeq.current,
+          def: request.def,
+          cell: request.cell,
+          width,
+          height,
+          endScale: clamp((slotRect.width + 2) / width, 0.16, 0.5),
+          fromX: keyRect.left + keyRect.width / 2 - width / 2,
+          fromY: keyRect.top,
+          toX: slotRect.left + slotRect.width / 2 - width / 2,
+          toY: slotRect.top + slotRect.height / 2 - height / 2,
+          line: -1,
+          remote: false,
+          typingIndex: request.typingIndex,
+        };
+
+        setFlights((prev) => [...prev, flight]);
+      }
+
+      setSpawnQueue((queue) => queue.slice(1));
+      return;
+    }
+
     const knownDef = KEY_BY_CODE[request.cell.code];
     const keyEl =
       request.remote || !knownDef
@@ -423,6 +615,21 @@ export default function App() {
     setSpawnQueue((queue) => queue.slice(1));
   }, [spawnQueue, lines, flights]);
 
+  const expectedChar = typingSession.result
+    ? undefined
+    : targetChars[typingSession.cursor];
+  const nextFinger = expectedChar
+    ? (keyForChar(expectedChar)?.finger ?? null)
+    : null;
+  const pressedFingers = useMemo(() => {
+    const set = new Set<Finger>();
+    for (const code of pressed) {
+      const def = KEY_BY_CODE[code];
+      if (def) set.add(def.finger);
+    }
+    return set;
+  }, [pressed]);
+
   const caret = useMemo(() => {
     const last = lines.length - 1;
     const pendingUnits = flights.reduce(
@@ -438,6 +645,7 @@ export default function App() {
 
   const landFlight = (flight: Flight) => {
     setFlights((prev) => prev.filter((item) => item.id !== flight.id));
+    if (flight.typingIndex !== undefined) return; // el carácter ya avanzó
     setLines((prev) => {
       const next = [...prev];
       while (next.length <= flight.line) next.push([]);
@@ -494,8 +702,104 @@ export default function App() {
     ]);
   };
 
+  /**
+   * Rama del modo mecanografía: la tecla correcta avanza el cursor (y su
+   * tecla vuela al hueco del carácter); la incorrecta sacude y cuenta.
+   * Las teclas muertas se componen igual que en el modo libre.
+   */
+  const handleTypingKey = (def: KeyDef, event: KeyboardEvent) => {
+    const shift = event.shiftKey;
+    const caps = event.getModifierState("CapsLock");
+
+    if (def.kind === "backspace") {
+      updatePendingAccent(null);
+      const session = typingSessionRef.current;
+      if (session.result || session.cursor === 0) return;
+      const next = { ...session, cursor: session.cursor - 1 };
+      typingSessionRef.current = next;
+      setTypingSession(next);
+      return;
+    }
+
+    if (def.kind === "dead") {
+      const accent = shift ? (def.shiftLabel ?? def.label) : def.label;
+      updatePendingAccent(accent);
+      return;
+    }
+
+    const session = typingSessionRef.current;
+    if (session.result) return; // lección terminada
+
+    let produced: string | null = null;
+    if (def.kind === "space") produced = " ";
+    else if (def.kind === "letter" || def.kind === "punct") {
+      produced = resolveChar(def, shift, caps);
+    }
+    if (!produced) return; // modificadores y teclas sin carácter
+
+    const accentPending = pendingAccentRef.current;
+    if (accentPending) {
+      const composed = ACCENTS[accentPending]?.compose[produced];
+      updatePendingAccent(null);
+      if (composed) produced = composed;
+    }
+
+    if (targetChars.length === 0) return;
+    const targetIndex = session.cursor;
+    const expected = targetChars[targetIndex];
+
+    if (sameTypedChar(produced, expected)) {
+      const startedAt = session.startedAt ?? Date.now();
+      const cursor = targetIndex + 1;
+      const done = cursor >= targetChars.length;
+      let result: LessonResult | null = null;
+
+      if (done) {
+        const ppm = computePpm(targetChars.length, Date.now() - startedAt);
+        const accuracy = computeAccuracy(
+          targetChars.length,
+          session.errors,
+        );
+        result = { ppm, accuracy, stars: starsFor(accuracy) };
+        const finished = result;
+        setTypingProgress((prev) => {
+          const next = recordLessonResult(prev, typingText.id, finished);
+          saveTypingProgress(next);
+          return next;
+        });
+        sounds.playComplete();
+      }
+
+      if (!reducedMotion) {
+        setSpawnQueue((q) => [
+          ...q,
+          {
+            def,
+            cell: cellFromKey(def, expected, shift, caps),
+            typingIndex: targetIndex,
+          },
+        ]);
+      }
+
+      const next = { ...session, cursor, startedAt, result };
+      typingSessionRef.current = next;
+      setTypingSession(next);
+      return;
+    }
+
+    sounds.playError();
+    const errored = { ...session, errors: session.errors + 1, shake: session.shake + 1 };
+    typingSessionRef.current = errored;
+    setTypingSession(errored);
+    setTypingProgress((prev) => {
+      const next = recordKeyError(prev, def.code);
+      saveTypingProgress(next);
+      return next;
+    });
+  };
+
   const handleBackspace = () => {
-    setPendingAccent(null);
+    updatePendingAccent(null);
 
     if (spawnQueue.length > 0) {
       setSpawnQueue((queue) => queue.slice(0, -1));
@@ -525,7 +829,7 @@ export default function App() {
   };
 
   const handleEnter = (def: KeyDef, event: KeyboardEvent) => {
-    setPendingAccent(null);
+    updatePendingAccent(null);
     const lastIndex = lines.length - 1;
     const hasContent =
       lines[lastIndex].length > 0 ||
@@ -558,9 +862,10 @@ export default function App() {
         : def.label;
     if (!char) return;
 
-    if (pendingAccent) {
-      const composed = ACCENTS[pendingAccent]?.compose[char];
-      setPendingAccent(null);
+    const accentPending = pendingAccentRef.current;
+    if (accentPending) {
+      const composed = ACCENTS[accentPending]?.compose[char];
+      updatePendingAccent(null);
       if (composed) char = composed;
     }
 
@@ -568,11 +873,12 @@ export default function App() {
   };
 
   const handleKeyDown = (event: KeyboardEvent): void => {
-    if (confirmClear || downloadOpen) {
+    if (confirmClear || downloadOpen || textPickerOpen) {
       if (event.key === "Escape") {
         event.preventDefault();
         setConfirmClear(false);
         setDownloadOpen(false);
+        setTextPickerOpen(false);
       }
       return;
     }
@@ -593,6 +899,11 @@ export default function App() {
     if (event.repeat) return;
 
     sounds.playKey(def.code);
+
+    if (mode === "typing") {
+      handleTypingKey(def, event);
+      return;
+    }
 
     switch (def.kind) {
       case "shift":
@@ -618,7 +929,7 @@ export default function App() {
         return;
       case "space": {
         const caps = event.getModifierState("CapsLock");
-        setPendingAccent(null);
+        updatePendingAccent(null);
         commitCell(def, cellFromKey(def, " ", event.shiftKey, caps));
         return;
       }
@@ -626,7 +937,7 @@ export default function App() {
         const accent = event.shiftKey
           ? (def.shiftLabel ?? def.label)
           : def.label;
-        setPendingAccent(accent);
+        updatePendingAccent(accent);
         commitCell(
           def,
           cellFromKey(
@@ -681,7 +992,7 @@ export default function App() {
     setLines([[]]);
     setFlights([]);
     setSpawnQueue([]);
-    setPendingAccent(null);
+    updatePendingAccent(null);
     setConfirmClear(false);
     try {
       localStorage.removeItem(STORAGE_TEXT);
@@ -704,10 +1015,64 @@ export default function App() {
           <img className="brand-icon" src="/kinkel.svg" alt="" />
           <div className="brand-text">
             <h1 className="brand-name">Kinkel</h1>
-            <p className="brand-tag">¡Escribe y mira volar tus letras!</p>
+            <p className="brand-tag">{modeTagline(mode)}</p>
           </div>
         </div>
+        <div className="mode-switch" role="tablist" aria-label="Modo de la app">
+          {MODES.map((entry) => {
+            const active = mode === entry.id;
+            return (
+              <button
+                key={entry.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                className={active ? "mode-btn mode-btn--active" : "mode-btn"}
+                onClick={(event) => {
+                  switchMode(entry.id);
+                  event.currentTarget.blur();
+                }}
+              >
+                {entry.id === "kids" ? <PenguinIcon size={18} /> : <KeyboardIcon size={18} />}
+                <span>{entry.label}</span>
+              </button>
+            );
+          })}
+        </div>
         <div className="topbar-actions">
+          {mode === "typing" ? (
+            <div className="text-menu-wrap">
+              <button
+                type="button"
+                className={
+                  textPickerOpen
+                    ? "icon-btn icon-btn--picker icon-btn--picker-open"
+                    : "icon-btn icon-btn--picker"
+                }
+                onClick={(event) => {
+                  setTextPickerOpen((open) => !open);
+                  event.currentTarget.blur();
+                }}
+                title="Elegir texto"
+                aria-label="Elegir texto"
+                aria-haspopup="menu"
+                aria-expanded={textPickerOpen}
+              >
+                <BookIcon />
+              </button>
+              {textPickerOpen ? (
+                <TextMenu
+                  progress={typingProgress}
+                  currentId={textId}
+                  onSelect={(id) => {
+                    resetTyping(id);
+                    setTextPickerOpen(false);
+                  }}
+                  onClose={() => setTextPickerOpen(false)}
+                />
+              ) : null}
+            </div>
+          ) : null}
           {isWeb ? (
             <button
               type="button"
@@ -754,7 +1119,21 @@ export default function App() {
 
       <div className="container">
         <div className="stage-holder" ref={stageHolderRef}>
-          <TextStage lines={lines} caret={caret} flashLine={flashLine} />
+          {mode === "kids" ? (
+            <TextStage lines={lines} caret={caret} flashLine={flashLine} />
+          ) : (
+            <TypingStage
+              text={typingText}
+              cursor={typingSession.cursor}
+              errors={typingSession.errors}
+              shake={typingSession.shake}
+              done={typingSession.result !== null}
+              result={typingSession.result}
+              reducedMotion={reducedMotion}
+              onRestart={() => resetTyping()}
+              onNextText={nextText}
+            />
+          )}
         </div>
 
         <div className="keyboard-area">
@@ -769,6 +1148,27 @@ export default function App() {
               shiftHeld={shiftHeld}
               capsOn={capsOn}
               pendingAccent={pendingAccent}
+              nextKey={mode === "typing" && expectedChar ? keyForChar(expectedChar)?.code ?? null : null}
+              overlay={
+                mode === "typing" ? (
+                  <div className={`hands-zone${handsHidden ? " hands-zone--hidden" : ""}`}>
+                    <Hands nextFinger={nextFinger} pressedFingers={pressedFingers} />
+                    <button
+                      type="button"
+                      className="hands-toggle"
+                      onClick={(event) => {
+                        toggleHands();
+                        event.currentTarget.blur();
+                      }}
+                      title={handsHidden ? "Mostrar manos" : "Ocultar manos"}
+                      aria-label={handsHidden ? "Mostrar manos" : "Ocultar manos"}
+                      aria-pressed={!handsHidden}
+                    >
+                      {handsHidden ? <EyeOffIcon size={18} /> : <EyeIcon size={18} />}
+                    </button>
+                  </div>
+                ) : null
+              }
             />
           </div>
         </div>

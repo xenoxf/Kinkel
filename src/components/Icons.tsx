@@ -104,3 +104,55 @@ export function LinuxIcon({ size = 24 }: IconProps) {
   );
 }
 
+
+export function PenguinIcon({ size = 22 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M12 2.5c-3.2 0-5.5 2.3-5.5 5.6 0 .4 0 .8.1 1.2C5.4 11.4 4.6 13.9 4.6 16c0 2.9 2.6 5.5 7.4 5.5s7.4-2.6 7.4-5.5c0-2.1-.8-4.6-2-6.7v-.1c.1-.4.1-.8.1-1.2 0-3.3-2.3-5.6-5.5-5.6Z" opacity="0.9" />
+      <ellipse cx="12" cy="15.6" rx="4.1" ry="3.7" fill="#fffdf7" />
+      <circle cx="9.7" cy="8.3" r="1.05" fill="#fffdf7" />
+      <circle cx="14.3" cy="8.3" r="1.05" fill="#fffdf7" />
+      <circle cx="9.8" cy="8.35" r="0.55" fill="#0f2836" />
+      <circle cx="14.2" cy="8.35" r="0.55" fill="#0f2836" />
+      <path d="M10.9 10.6h2.2l-1.1 1.35-1.1-1.35Z" fill="#f59e0b" />
+    </svg>
+  );
+}
+
+export function KeyboardIcon({ size = 22 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" {...baseProps}>
+      <rect x="2" y="6.5" width="20" height="11" rx="2.4" />
+      <path d="M6 10.5h.01M10 10.5h.01M14 10.5h.01M18 10.5h.01M6 14h.01M18 14h.01M9.5 14h5" />
+    </svg>
+  );
+}
+
+export function EyeIcon({ size = 20 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" {...baseProps}>
+      <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" />
+      <circle cx="12" cy="12" r="2.8" />
+    </svg>
+  );
+}
+
+export function EyeOffIcon({ size = 20 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" {...baseProps}>
+      <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" />
+      <circle cx="12" cy="12" r="2.8" />
+      <line x1="4" y1="20" x2="20" y2="4" />
+    </svg>
+  );
+}
+
+export function BookIcon({ size = 22 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" {...baseProps}>
+      <path d="M4 4.5A1.5 1.5 0 0 1 5.5 3H20v15.5H5.5A1.5 1.5 0 0 0 4 20V4.5Z" />
+      <path d="M4 20a1.5 1.5 0 0 1 1.5-1.5H20" />
+      <path d="M8 7.5h8M8 11h5" />
+    </svg>
+  );
+}

@@ -15,6 +15,9 @@ type PlatformId = "macos" | "windows" | "linux";
 interface AssetOption {
   label: string;
   file: string;
+  /** Tamaño del instalador en MB. Actualizar en cada release (son los
+   *  tamaños reales de los assets de v0.4.1 en GitHub Releases). */
+  mb: number;
 }
 
 interface Platform {
@@ -31,6 +34,7 @@ const PLATFORMS: Platform[] = [
     primary: {
       label: "DMG",
       file: `Kinkel_${version}_darwin_universal.dmg`,
+      mb: 4.09,
     },
     alternates: [],
   },
@@ -40,9 +44,10 @@ const PLATFORMS: Platform[] = [
     primary: {
       label: "EXE",
       file: `Kinkel_${version}_windows_x64-setup.exe`,
+      mb: 1.61,
     },
     alternates: [
-      { label: "MSI", file: `Kinkel_${version}_windows_x64.msi` },
+      { label: "MSI", file: `Kinkel_${version}_windows_x64.msi`, mb: 2.23 },
     ],
   },
   {
@@ -51,13 +56,20 @@ const PLATFORMS: Platform[] = [
     primary: {
       label: "AppImage",
       file: `Kinkel_${version}_linux_amd64.AppImage`,
+      mb: 76.97,
     },
     alternates: [
-      { label: "DEB", file: `Kinkel_${version}_linux_amd64.deb` },
-      { label: "RPM", file: `Kinkel_${version}_linux_x86_64.rpm` },
+      { label: "DEB", file: `Kinkel_${version}_linux_amd64.deb`, mb: 2.02 },
+      { label: "RPM", file: `Kinkel_${version}_linux_x86_64.rpm`, mb: 2.02 },
     ],
   },
 ];
+
+/** "4.1 MB", "1.6 MB", "77 MB", "2 MB"…  */
+function sizeLabel(mb: number): string {
+  const rounded = mb >= 10 ? String(Math.round(mb)) : mb.toFixed(1);
+  return `${rounded.replace(/\.0$/, "")} MB`;
+}
 
 function currentSystem(): PlatformId | "" {
   const ua = navigator.userAgent;
@@ -144,9 +156,10 @@ export function DownloadModal({ onClose }: DownloadModalProps) {
                 href={assetUrl(platform.primary)}
                 target="_blank"
                 rel="noreferrer"
-                title={platform.primary.label}
+                title={`Descargar ${platform.primary.label} (${sizeLabel(platform.primary.mb)})`}
               >
-                Descargar
+                Descargar{" "}
+                <span className="download-size">({sizeLabel(platform.primary.mb)})</span>
                 <DownloadIcon size={16} />
               </a>
 
@@ -158,9 +171,10 @@ export function DownloadModal({ onClose }: DownloadModalProps) {
                       href={assetUrl(option)}
                       target="_blank"
                       rel="noreferrer"
-                      title={option.label}
+                      title={`Descargar ${option.label} (${sizeLabel(option.mb)})`}
                     >
-                      {option.label}
+                      {option.label}{" "}
+                      <span className="download-size">({sizeLabel(option.mb)})</span>
                     </a>
                   ))}
                 </div>

@@ -7,6 +7,8 @@ interface KeyProps {
   shiftHeld: boolean;
   capsOn: boolean;
   accentPending: boolean;
+  /** Realce pulsante: esta tecla escribe el próximo carácter. */
+  next?: boolean;
   style?: CSSProperties;
 }
 
@@ -26,6 +28,7 @@ export function Key({
   shiftHeld,
   capsOn,
   accentPending,
+  next = false,
   style,
 }: KeyProps) {
   const isLetter = def.kind === "letter";
@@ -43,6 +46,7 @@ export function Key({
     `key--${def.kind}`,
     UTILITY_KINDS.has(def.kind) ? "key--util" : "",
     pressed ? "key--pressed" : "",
+    next ? "key--next" : "",
     accentPending ? "key--pending" : "",
     HOME_KEYS.has(def.code) ? "key--home" : "",
   ]

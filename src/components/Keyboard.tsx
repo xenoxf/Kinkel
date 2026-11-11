@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { KEYBOARD_KEYS } from "../keyboard/layout";
 import { Key } from "./Key";
 
@@ -6,9 +7,13 @@ interface KeyboardProps {
   shiftHeld: boolean;
   capsOn: boolean;
   pendingAccent: string | null;
+  /** Código de la tecla que escribe el próximo carácter (modo mecanografía). */
+  nextKey?: string | null;
+  /** Capa decorativa encima del teclado (manos del modo mecanografía). */
+  overlay?: ReactNode;
 }
 
-export function Keyboard({ pressed, shiftHeld, capsOn, pendingAccent }: KeyboardProps) {
+export function Keyboard({ pressed, shiftHeld, capsOn, pendingAccent, nextKey, overlay }: KeyboardProps) {
   return (
     <div className="keyboard-wrap">
       <div className="keyboard" role="img" aria-label="Teclado latinoamericano en pantalla">
@@ -26,6 +31,7 @@ export function Keyboard({ pressed, shiftHeld, capsOn, pendingAccent }: Keyboard
               shiftHeld={shiftHeld}
               capsOn={capsOn}
               accentPending={accentPending}
+              next={nextKey === def.code}
               style={{
                 gridColumn: `${def.col * 4 + 1} / span ${Math.round(def.width * 4)}`,
                 gridRow: def.row + 1,
@@ -34,6 +40,7 @@ export function Keyboard({ pressed, shiftHeld, capsOn, pendingAccent }: Keyboard
           );
         })}
       </div>
+      {overlay}
     </div>
   );
 }

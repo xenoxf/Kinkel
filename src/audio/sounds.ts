@@ -156,3 +156,56 @@ function playPiano(midi: number): void {
 export function playKey(code: string): void {
   playPiano(noteForCode(code));
 }
+
+/** Tecla equivocada en el modo mecanografía: un golpe grave y seco. */
+export function playError(): void {
+  const audio = getCtx();
+  if (!audio) return;
+
+  const t0 = audio.currentTime + 0.001;
+  const oscillator = audio.createOscillator();
+  const gain = audio.createGain();
+  const filter = audio.createBiquadFilter();
+
+  oscillator.type = "square";
+  oscillator.frequency.setValueAtTime(92, t0);
+  oscillator.frequency.exponentialRampToValueAtTime(55, t0 + 0.16);
+
+  filter.type = "lowpass";
+  filter.frequency.setValueAtTime(900, t0);
+
+  gain.gain.setValueAtTime(0.0001, t0);
+  gain.gain.exponentialRampToValueAtTime(0.16, t0 + 0.008);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.2);
+
+  oscillator.connect(filter).connect(gain).connect(audio.destination);
+  oscillator.start(t0);
+  oscillator.stop(t0 + 0.22);
+}
+
+/** Lección completada: arpegio alegre de "tada". */
+export function playComplete(): void {
+  const audio = getCtx();
+  if (!audio) return;
+
+  const t0 = audio.currentTime + 0.001;
+  const notes = [60, 64, 67, 72]; // C4 E4 G4 C5
+
+  notes.forEach((midi, index) => {
+    const freq = 440 * Math.pow(2, (midi - 69) / 12);
+    const start = t0 + index * 0.09;
+    const oscillator = audio.createOscillator();
+    const gain = audio.createGain();
+
+    oscillator.type = "triangle";
+    oscillator.frequency.setValueAtTime(freq, start);
+
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.exponentialRampToValueAtTime(0.14, start + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + (index === notes.length - 1 ? 0.9 : 0.34));
+
+    oscillator.connect(gain).connect(audio.destination);
+    oscillator.start(start);
+    oscillator.stop(start + 1);
+  });
+}

@@ -369,6 +369,7 @@ body {
   /* El ancho se deriva de la altura de tecla para conservar la proporción
      real del teclado: 1u ≈ 1,25 × alto. Nunca se estira para llenar la
      pantalla; en pantallas anchas quedan márgenes laterales. */
+  position: relative;
   --deck-margin: clamp(10px, 1.6vw, 32px);
   --deck-pad: clamp(7px, 1vh, 12px);
   --key-gap: clamp(3px, 0.45vh, 5px);
@@ -802,6 +803,11 @@ body {
   border-color: #7dd3fc;
 }
 
+/* El tamaño pesa menos que la etiqueta para que el foco siga en la acción. */
+.download-size {
+  font-weight: 400;
+}
+
 /* ---------- Animaciones ---------- */
 
 @keyframes brandBob {
@@ -1094,5 +1100,670 @@ body {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* ============================================================
+   Modo Mecanografía — tema claro y serio + selector de modo
+   ============================================================ */
+
+/* ---------- Selector de modo ---------- */
+
+.mode-switch {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 1px solid #d6dde8;
+  box-shadow: 0 8px 20px -12px rgba(15, 23, 42, 0.35);
+}
+
+.mode-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: #475569;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: transparent;
+  transition: background 0.15s ease, color 0.15s ease;
+  white-space: nowrap;
+}
+
+.mode-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.mode-btn--active,
+.mode-btn--active:hover {
+  background: #1e3a8a;
+  color: #ffffff;
+}
+
+/* ---------- Tema "estudio" (data-mode="typing") ---------- */
+
+html[data-mode="typing"] body {
+  background: #e9edf3;
+}
+
+html[data-mode="typing"] .app::before {
+  display: none;
+}
+
+html[data-mode="typing"] .brand-name { color: #0f172a; }
+html[data-mode="typing"] .brand-tag { color: #475569; }
+html[data-mode="typing"] .brand-icon {
+  filter: drop-shadow(0 6px 10px rgba(15, 23, 42, 0.18));
+}
+
+html[data-mode="typing"] .topbar-actions .icon-btn {
+  background: #ffffff;
+  border-color: #d6dde8;
+  color: #334155;
+  box-shadow: 0 6px 16px -14px rgba(15, 23, 42, 0.45);
+}
+
+html[data-mode="typing"] .topbar-actions .icon-btn:hover {
+  background: #f8fafc;
+  transform: none;
+}
+
+html[data-mode="typing"] .icon-btn--picker {
+  color: #1e3a8a;
+}
+
+/* --- Pizarra: hoja blanca limpia, ajustada al texto --- */
+html[data-mode="typing"] .stage-holder {
+  width: min(100%, 800px);
+  height: auto;
+  max-height: min(27vh, 230px);
+  margin-top: 12px;
+}
+
+html[data-mode="typing"] .stage {
+  flex: 0 1 auto;
+  max-height: min(27vh, 230px);
+  background: #ffffff;
+  border: 1px solid #d6dde8;
+  box-shadow: 0 12px 26px -22px rgba(15, 23, 42, 0.32);
+}
+
+html[data-mode="typing"] .stage::before {
+  display: none;
+}
+
+html[data-mode="typing"] .stage::after {
+  display: none;
+}
+
+/* --- Teclado: cada tecla se pinta entera con el color de su dedo --- */
+html[data-mode="typing"] .keyboard-wrap {
+  position: relative;
+  background: #ffffff;
+  border: 1px solid #d6dde8;
+  box-shadow:
+    0 18px 38px -24px rgba(15, 23, 42, 0.4),
+    inset 0 1px 0 #ffffff;
+  backdrop-filter: none;
+}
+
+html[data-mode="typing"] .key {
+  background: var(--key-bg);
+  border: 1px solid rgba(255, 255, 255, 0.62);
+  color: #22304b;
+  box-shadow:
+    0 3px 0 var(--key-edge),
+    0 5px 9px -9px rgba(15, 23, 42, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.75);
+}
+
+/* Color de dedo aplicado a TODA la tecla: fondo, no solo el canto. */
+html[data-mode="typing"] .key--pinky-l { --key-bg: #f997a9; --key-edge: #f43f5e; }
+html[data-mode="typing"] .key--ring-l { --key-bg: #fcb27f; --key-edge: #f97316; }
+html[data-mode="typing"] .key--middle-l { --key-bg: #f3d577; --key-edge: #eab308; }
+html[data-mode="typing"] .key--index-l { --key-bg: #85dfa6; --key-edge: #22c55e; }
+html[data-mode="typing"] .key--index-r { --key-bg: #7ac4be; --key-edge: #0d9488; }
+html[data-mode="typing"] .key--middle-r { --key-bg: #93bafa; --key-edge: #3b82f6; }
+html[data-mode="typing"] .key--ring-r { --key-bg: #bfa5fa; --key-edge: #8b5cf6; }
+html[data-mode="typing"] .key--pinky-r { --key-bg: #f49ac7; --key-edge: #ec4899; }
+html[data-mode="typing"] .key--thumb { --key-bg: #ece3cc; --key-edge: #cfc4a9; }
+html[data-mode="typing"] .key--mod { --key-bg: #e5eaf2; --key-edge: #aab6c6; }
+
+html[data-mode="typing"] .key--util .key-label,
+html[data-mode="typing"] .key-sub { color: #334155; }
+
+html[data-mode="typing"] .key--space .key-label { color: #475569; }
+html[data-mode="typing"] .key-bump { background: rgba(15, 23, 42, 0.28); }
+
+html[data-mode="typing"] .key--pressed {
+  filter: brightness(0.94);
+  box-shadow:
+    0 1px 0 var(--key-edge),
+    0 0 0 2px rgba(15, 23, 42, 0.12),
+    inset 0 2px 6px rgba(15, 23, 42, 0.14);
+}
+
+/* --- Realce de la próxima tecla: aro dorado interior que respira --- */
+@keyframes keyNextBreathe {
+  0%, 100% {
+    filter: brightness(1);
+    box-shadow:
+      0 3px 0 var(--key-edge),
+      inset 0 0 0 3px rgba(224, 168, 12, 0.82),
+      inset 0 0 9px rgba(224, 168, 12, 0.22),
+      0 5px 9px -9px rgba(15, 23, 42, 0.45),
+      inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  }
+  50% {
+    filter: brightness(1.04);
+    box-shadow:
+      0 3px 0 var(--key-edge),
+      inset 0 0 0 5px #d9a006,
+      inset 0 0 14px rgba(217, 160, 6, 0.4),
+      0 6px 12px -9px rgba(15, 23, 42, 0.5),
+      inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  }
+}
+
+html[data-mode="typing"] .key--next {
+  z-index: 2;
+  animation: keyNextBreathe 1.9s ease-in-out infinite;
+}
+
+html[data-mode="typing"] .key--next.key--pressed {
+  animation: none;
+}
+
+/* ============================================================
+   Mecanografía — pizarra simple (solo el texto)
+   ============================================================ */
+
+.typing-stage {
+  display: flex;
+  flex-direction: column;
+  min-height: 138px;
+}
+
+.typing-body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  align-items: center;
+  padding: 16px 26px;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.typing-text {
+  width: 100%;
+  min-width: 0;
+  font-size: clamp(18px, 2.9vh, 27px);
+  line-height: 1.55;
+  letter-spacing: 0;
+  color: #1f2a44;
+  user-select: none;
+}
+
+.typing-word {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  margin-right: 0;
+  white-space: nowrap;
+}
+
+.typing-char {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 1.45em;
+  padding: 0 0.5px;
+  border-radius: 5px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.typing-char--space { min-width: 0.62em; }
+
+.typing-char--pending { color: #aeb9ca; }
+
+.typing-char--current {
+  color: #3f2a00;
+  background: #fef3c7;
+  box-shadow: inset 0 -2px 0 #f59e0b;
+}
+
+.typing-char--done {
+  color: #14293a;
+  background: var(--key-bg, #eef2f7);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 1.5px 0 var(--key-edge, #cbd5e1), inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  animation: boardKeyPop 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.3) both;
+}
+
+@keyframes typingShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-7px); }
+  75% { transform: translateX(7px); }
+}
+
+.typing-char--error {
+  background: #ef4444 !important;
+  color: #ffffff !important;
+  animation: typingShake 0.32s ease-in-out;
+}
+
+/* --- Resultado del texto --- */
+
+.typing-result {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  overflow: hidden;
+  animation: fadeIn 0.25s ease-out;
+}
+
+.typing-result h3 {
+  font-size: clamp(18px, 2.3vh, 22px);
+  font-weight: 800;
+  color: #1e3a8a;
+  margin: 0;
+}
+
+.typing-stars {
+  display: flex;
+  gap: 6px;
+}
+
+.star {
+  display: inline-flex;
+  animation: starPop 0.5s cubic-bezier(0.2, 1.4, 0.4, 1.3) both;
+}
+
+@keyframes starPop {
+  0% { transform: scale(0.2) rotate(-30deg); opacity: 0; }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+
+.typing-result-stats {
+  display: flex;
+  gap: 22px;
+  margin: 0;
+}
+
+.typing-result-stats dt {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.typing-result-stats dd {
+  font-size: 17px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 1px 0 0;
+}
+
+.typing-result-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.typing-result .btn {
+  font-size: 14px;
+  padding: 8px 16px;
+  border-radius: 10px;
+}
+
+.btn--primary {
+  background: #1e3a8a;
+  color: #ffffff;
+  box-shadow: 0 10px 20px -12px rgba(30, 58, 138, 0.7);
+}
+
+.btn--primary:hover { filter: brightness(1.12); }
+
+.confetti-piece {
+  position: absolute;
+  top: -14px;
+  width: 8px;
+  height: 13px;
+  border-radius: 2px;
+  opacity: 0.95;
+  animation: confettiFall 1.9s linear forwards;
+  pointer-events: none;
+}
+
+@keyframes confettiFall {
+  0% { transform: translateY(-10px) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(430px) rotate(660deg); opacity: 0.15; }
+}
+
+/* ============================================================
+   Selector de textos (menú desplegable del header)
+   ============================================================ */
+
+.text-menu-wrap {
+  position: relative;
+  display: flex;
+}
+
+.icon-btn--picker-open {
+  background: #eff6ff;
+  color: #1e3a8a;
+}
+
+.text-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 90;
+  width: min(84vw, 314px);
+  padding: 6px;
+  background: #ffffff;
+  border: 1px solid #d6dde8;
+  border-radius: 14px;
+  box-shadow:
+    0 22px 45px -24px rgba(15, 23, 42, 0.5),
+    0 2px 6px rgba(15, 23, 42, 0.06);
+  animation: textMenuIn 0.14s ease-out;
+}
+
+@keyframes textMenuIn {
+  from { opacity: 0; transform: translateY(-4px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.text-menu-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: min(60vh, 480px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.text-menu-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.text-menu-list::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.text-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  height: 34px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: #334155;
+  text-align: left;
+  cursor: pointer;
+}
+
+.text-menu-item:hover {
+  background: #f3f6fa;
+}
+
+.text-menu-item:focus-visible {
+  outline: 2px solid #93c5fd;
+  outline-offset: -2px;
+}
+
+.text-menu-item--active,
+.text-menu-item--active:hover {
+  background: #eef4ff;
+  color: #1e3a8a;
+  font-weight: 800;
+}
+
+.text-menu-item-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.text-menu-stars {
+  flex: none;
+  color: #d97706;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+}
+
+/* ============================================================
+   Manos de Kinkel — proporciones reales, glass, sobre el teclado
+   ============================================================ */
+
+.hands-zone {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+}
+
+/* Cada mano vive en el margen lateral del teclado, sin tapar teclas. */
+.hands-side {
+  position: absolute;
+  top: 52%;
+  width: clamp(93px, 13.5vw, 198px); /* 1.5× */
+  pointer-events: auto;
+  transition: opacity 0.2s ease;
+}
+
+/* En pantallas estrechas el margen lateral no da para 1.5×: se reduce lo
+   justo para que las manos sigan completas dentro del viewport. */
+@media (max-width: 1100px) {
+  .hands-side { width: clamp(70px, 10.8vw, 112px); }
+}
+
+.hands-side--left {
+  right: calc(100% + clamp(10px, 1.4vw, 24px));
+  transform: translateY(-38%) rotate(7deg);
+  transform-origin: 50% 100%;
+}
+
+.hands-side--right {
+  left: calc(100% + clamp(10px, 1.4vw, 24px));
+  transform: translateY(-38%) rotate(-7deg);
+  transform-origin: 50% 100%;
+}
+
+.hands-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  pointer-events: none;
+  filter: drop-shadow(0 10px 14px rgba(15, 23, 42, 0.14));
+}
+
+.hf--pinky-l { --fc: #f43f5e; }
+.hf--ring-l  { --fc: #f97316; }
+.hf--middle-l { --fc: #eab308; }
+.hf--index-l { --fc: #22c55e; }
+.hf--index-r { --fc: #0d9488; }
+.hf--middle-r { --fc: #3b82f6; }
+.hf--ring-r  { --fc: #8b5cf6; }
+.hf--pinky-r { --fc: #ec4899; }
+.hf--thumb   { --fc: #b6ab97; }
+
+/* Palma: amarillo Simpson translúcido, borde y brillo de vidrio. */
+.hand-palm {
+  fill: rgba(255, 217, 15, 0.3);
+  stroke: rgba(255, 255, 255, 0.5);
+  stroke-width: 1;
+  stroke-linejoin: round;
+}
+
+/* Dedo: MISMO color que el canto de sus teclas (unión dedo-teclado). */
+.hand-segment {
+  fill: var(--fc);
+  fill-opacity: 0.64;
+  stroke: rgba(255, 255, 255, 0.72);
+  stroke-width: 1.15;
+  stroke-linejoin: round;
+  transition: fill-opacity 0.15s ease;
+}
+
+/* El pulgar nace amarillo como la palma y termina beige como la barra espaciadora. */
+.hand-thumb-segment {
+  fill: #cfc4a9;
+}
+
+.hand-tip-halo {
+  fill: rgba(245, 158, 11, 0.2);
+  stroke: rgba(245, 158, 11, 0.72);
+  stroke-width: 1.1;
+  animation: tipHalo 1.1s ease-in-out infinite;
+}
+
+@keyframes tipHalo {
+  0%, 100% { opacity: 0.35; transform: scale(0.86); transform-box: fill-box; transform-origin: center; }
+  50% { opacity: 0.95; transform: scale(1.08); transform-box: fill-box; transform-origin: center; }
+}
+
+.hand-nail {
+  fill: rgba(255, 248, 196, 0.48);
+  stroke: rgba(255, 255, 255, 0.32);
+  stroke-width: 0.25;
+}
+
+.hand-gloss {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.32);
+  stroke-width: 1;
+  stroke-linecap: round;
+}
+
+.hand-finger {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+
+.hand-finger--next {
+  animation: fingerNext 0.9s ease-in-out infinite;
+}
+
+.hand-finger--next .hand-segment {
+  fill-opacity: 0.8;
+  stroke: #f59e0b;
+  stroke-width: 1.9;
+}
+
+@keyframes fingerNext {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-1.2px); }
+}
+
+.hand-finger--down {
+  transform: scale(0.985) translateY(0.8px);
+}
+
+/* Ojo para ocultar/mostrar las manos (aparece al hacer hover). */
+.hands-toggle {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  z-index: 2;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(15, 23, 42, 0.16);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #334155;
+  cursor: pointer;
+  pointer-events: auto;
+  opacity: 0;
+  transition: opacity 0.15s ease, background 0.15s ease;
+  box-shadow: 0 4px 12px -6px rgba(15, 23, 42, 0.45);
+}
+
+.keyboard-wrap:hover .hands-toggle,
+.keyboard-stack:hover .hands-toggle,
+.hands-toggle:focus-visible {
+  opacity: 1;
+}
+
+.hands-toggle:hover {
+  background: #ffffff;
+}
+
+.hands-zone--hidden .hands-side {
+  display: none;
+}
+
+.hands-zone--hidden .hands-toggle {
+  opacity: 0.5;
+}
+
+.keyboard-wrap:hover .hands-zone--hidden .hands-toggle {
+  opacity: 1;
+}
+
+/* Reducción para pantallas bajas */
+@media (max-height: 640px) {
+  .hands-toggle { width: 28px; height: 28px; }
+}
+
+@media (max-width: 860px) {
+  .mode-btn { padding: 7px 11px; font-size: 12px; }
+}
+
+@media (max-width: 640px) {
+  .mode-switch { left: auto; right: 0; transform: none; }
+  .mode-btn span { display: none; }
+  .mode-btn { padding: 8px 10px; }
+}
+
+/* Sin animación, el aro dorado de la próxima tecla queda fijo y visible. */
+@media (prefers-reduced-motion: reduce) {
+  html[data-mode="typing"] .key--next {
+    animation: none;
+    box-shadow:
+      0 3px 0 var(--key-edge),
+      inset 0 0 0 4px #d9a006,
+      inset 0 0 10px rgba(217, 160, 6, 0.32),
+      0 5px 9px -9px rgba(15, 23, 42, 0.45),
+      inset 0 1px 0 rgba(255, 255, 255, 0.8);
   }
 }
