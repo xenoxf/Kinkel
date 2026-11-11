@@ -34,7 +34,7 @@ const PLATFORMS: Platform[] = [
     primary: {
       label: "DMG",
       file: `Kinkel_${version}_darwin_universal.dmg`,
-      mb: 4.09,
+      mb: 4.1,
     },
     alternates: [],
   },
@@ -44,10 +44,10 @@ const PLATFORMS: Platform[] = [
     primary: {
       label: "EXE",
       file: `Kinkel_${version}_windows_x64-setup.exe`,
-      mb: 1.61,
+      mb: 1.62,
     },
     alternates: [
-      { label: "MSI", file: `Kinkel_${version}_windows_x64.msi`, mb: 2.23 },
+      { label: "MSI", file: `Kinkel_${version}_windows_x64.msi`, mb: 2.25 },
     ],
   },
   {
@@ -56,11 +56,11 @@ const PLATFORMS: Platform[] = [
     primary: {
       label: "AppImage",
       file: `Kinkel_${version}_linux_amd64.AppImage`,
-      mb: 76.97,
+      mb: 76.98,
     },
     alternates: [
       { label: "DEB", file: `Kinkel_${version}_linux_amd64.deb`, mb: 2.02 },
-      { label: "RPM", file: `Kinkel_${version}_linux_x86_64.rpm`, mb: 2.02 },
+      { label: "RPM", file: `Kinkel_${version}_linux_x86_64.rpm`, mb: 2.03 },
     ],
   },
 ];
