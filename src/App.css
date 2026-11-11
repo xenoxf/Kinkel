@@ -140,11 +140,8 @@ body {
 /* ---------- Pizarra compacta (secundaria, flotante arriba) ---------- */
 
 .stage-holder {
-  position: absolute;
-  top: 84px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: min(calc(100% - var(--gutter) * 2), 980px);
+  margin-top: 16px;
+  width: 100%;
   height: clamp(150px, 19vh, 176px);
   display: flex;
   z-index: 3;
@@ -357,6 +354,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 100%;
   padding: clamp(10px, 2vh, 20px) 0 clamp(14px, 2.6vh, 24px);
 }
 
