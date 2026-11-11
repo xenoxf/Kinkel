@@ -1,6 +1,6 @@
 [package]
 name = "kinkel"
-version = "0.4.1"
+version = "0.5.0"
 description = "Kinkel — juego educativo de mecanografía para niños de 5 a 7 años"
 authors = ["xenoxf"]
 edition = "2024"
